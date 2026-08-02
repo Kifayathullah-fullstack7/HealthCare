@@ -1,0 +1,22 @@
+# Environment variables and local configs (DO NOT COMMIT)
+.env
+.env.local
+.env.*.local
+
+# Python caches and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+ENV/
+env/
+
+# IDE/Editor configs
+.vscode/
+.idea/
+
+# Database dumps/logs
+*.log
+*.sql.gz

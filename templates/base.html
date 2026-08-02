@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SymptomTriage AI{% endblock %}</title>
+    <meta name="description" content="SymptomTriage AI: An intelligent clinical guidance tool to route you to the correct medical specialist.">
+    
+    <!-- Google Fonts: Source Serif 4, Inter, IBM Plex Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+    
+    <!-- Custom stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" style="text-decoration: none;">
+                <h1>SymptomTriage AI</h1>
+            </a>
+            <p class="subtitle">Clinical Specialist Recommendation &amp; Urgency Triage</p>
+            <nav class="header-nav">
+                <a href="/" class="nav-link">Intake</a>
+                <span class="nav-divider">·</span>
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+            </nav>
+        </header>
+        
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <!-- Toast notification element -->
+    <div id="toast" class="toast">Link copied to clipboard</div>
+
+    <script>
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            if (message) {
+                toast.textContent = message;
+            }
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

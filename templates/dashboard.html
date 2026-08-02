@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Impact Dashboard - SymptomTriage AI{% endblock %}
+
+{% block head %}
+<!-- Chart.js from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Stat Cards Row -->
+<div class="dash-stats-row">
+    <div class="dash-stat-card">
+        <span class="dash-stat-value" id="stat-total">{{ stats.total_reports }}</span>
+        <span class="dash-stat-label">Total Reports</span>
+    </div>
+    <div class="dash-stat-card">
+        <span class="dash-stat-value" id="stat-today">{{ stats.today_reports }}</span>
+        <span class="dash-stat-label">Today (24h)</span>
+    </div>
+    <div class="dash-stat-card dash-stat-card--urgent">
+        <span class="dash-stat-value" id="stat-high">{{ stats.urgency_counts.high }}</span>
+        <span class="dash-stat-label">High-Urgency Cases</span>
+    </div>
+    <div class="dash-stat-card">
+        <span class="dash-stat-value dash-stat-value--dept" id="stat-dept">{{ stats.most_common_dept }}</span>
+        <span class="dash-stat-label">Most Common Dept</span>
+    </div>
+</div>
+
+<!-- Urgency Breakdown Bar -->
+<div class="card" style="margin-bottom: 2rem;">
+    <label style="margin-bottom: 1rem;">Urgency Distribution</label>
+
+    {% set total = stats.urgency_counts.low + stats.urgency_counts.medium + stats.urgency_counts.high %}
+    {% if total > 0 %}
+    <div class="urgency-bar-row">
+        {% if stats.urgency_counts.low > 0 %}
+        <div class="urgency-bar-segment urgency-bar--low"
+            style="width: {{ (stats.urgency_counts.low / total * 100) | round(1) }}%;"
+            title="Routine: {{ stats.urgency_counts.low }}">
+            {{ stats.urgency_counts.low }}
+        </div>
+        {% endif %}
+        {% if stats.urgency_counts.medium > 0 %}
+        <div class="urgency-bar-segment urgency-bar--medium"
+            style="width: {{ (stats.urgency_counts.medium / total * 100) | round(1) }}%;"
+            title="Moderate: {{ stats.urgency_counts.medium }}">
+            {{ stats.urgency_counts.medium }}
+        </div>
+        {% endif %}
+        {% if stats.urgency_counts.high > 0 %}
+        <div class="urgency-bar-segment urgency-bar--high"
+            style="width: {{ (stats.urgency_counts.high / total * 100) | round(1) }}%;"
+            title="Urgent: {{ stats.urgency_counts.high }}">
+            {{ stats.urgency_counts.high }}
+        </div>
+        {% endif %}
+    </div>
+    <div class="urgency-legend">
+        <span class="urgency-legend-item"><span class="urgency-dot urgency-dot--low"></span> Routine ({{ stats.urgency_counts.low }})</span>
+        <span class="urgency-legend-item"><span class="urgency-dot urgency-dot--medium"></span> Moderate ({{ stats.urgency_counts.medium }})</span>
+        <span class="urgency-legend-item"><span class="urgency-dot urgency-dot--high"></span> Urgent ({{ stats.urgency_counts.high }})</span>
+    </div>
+    {% else %}
+    <p style="color: var(--color-ink-muted); font-size: 0.9rem;">No reports yet. Submit a triage to see data here.</p>
+    {% endif %}
+</div>
+
+<!-- Department Frequency Chart -->
+<div class="card">
+    <label style="margin-bottom: 1rem;">Top Departments by Volume</label>
+    {% if stats.top_departments %}
+    <div class="chart-wrapper">
+        <canvas id="deptChart"></canvas>
+    </div>
+    {% else %}
+    <p style="color: var(--color-ink-muted); font-size: 0.9rem;">No department data available yet.</p>
+    {% endif %}
+</div>
+
+{% if stats.top_departments %}
+<script>
+    (function () {
+        const ctx = document.getElementById('deptChart').getContext('2d');
+        const labels = {{ stats.top_departments | map(attribute='recommended_department') | list | tojson }};
+        const data = {{ stats.top_departments | map(attribute='cnt') | list | tojson }};
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Reports',
+                    data: data,
+                    backgroundColor: '#3D6B63',
+                    borderColor: '#2E534D',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                    maxBarThickness: 48,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1C2438',
+                        titleFont: { family: 'Inter', size: 12 },
+                        bodyFont: { family: 'Inter', size: 11 },
+                        cornerRadius: 4,
+                        padding: 8,
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: { family: 'IBM Plex Mono', size: 11 },
+                            color: '#5C6478',
+                        },
+                        grid: {
+                            color: '#E2DED4',
+                            lineWidth: 0.5,
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: { family: 'Inter', size: 12 },
+                            color: '#1C2438',
+                        },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}

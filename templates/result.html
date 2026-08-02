@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}Triage Assessment Result - SymptomTriage AI{% endblock %}
+
+{% block content %}
+<div class="result-card-container">
+    <!-- Triage Band -->
+    {% if report.urgency_level == 'low' %}
+    <div class="triage-band low" id="triage-band">PRIORITY: ROUTINE</div>
+    {% elif report.urgency_level == 'medium' %}
+    <div class="triage-band medium" id="triage-band">PRIORITY: MODERATE</div>
+    {% else %}
+    <div class="triage-band high" id="triage-band">PRIORITY: URGENT</div>
+    {% endif %}
+
+    <!-- Main Result Card -->
+    <div class="card">
+        <!-- Metadata -->
+        <div class="result-meta">
+            <span>REPORT ID: <span style="user-select: all;">{{ report.uuid }}</span></span>
+            {% if report.heart_rate %}
+            <span>PULSE: <span style="font-weight: 600; color: var(--color-primary);">{{ report.heart_rate }} BPM</span></span>
+            {% endif %}
+            <span>DATE: {{ report.created_at }}</span>
+        </div>
+
+        <!-- Recommended Department -->
+        <div class="result-section">
+            <label>Recommended Specialist / Department</label>
+            <div class="department-title" id="department-title">{{ report.recommended_department }}</div>
+
+            <div class="confidence-row">
+                <div class="confidence-bar-track">
+                    <div class="confidence-bar-fill" style="width: {{ confidence }}%;"></div>
+                </div>
+                <span class="confidence-label">{{ confidence }}% confidence</span>
+            </div>
+
+            {% if differential_department %}
+            <div class="differential-note">
+                Also consider: <strong>{{ differential_department }}</strong>
+                {% if differential_confidence %}<span class="differential-confidence">({{ differential_confidence }}%
+                    match)</span>{% endif %}
+            </div>
+            {% endif %}
+
+            <a class="find-nearby-btn" id="find-nearby-btn" href="https://www.google.com/maps/search/?api=1&query={{ report.recommended_department | urlencode }}+near+me" target="_blank" rel="noopener noreferrer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Find {{ report.recommended_department }} near me
+            </a>
+
+            <!-- Resource Congestion Monitor -->
+            {% if report.assigned_facility %}
+            <div class="facility-monitor">
+                <div class="facility-header">
+                    <span class="facility-label">Assigned Route: <strong>{{ report.assigned_facility }}</strong></span>
+                    <span class="facility-occupancy {% if facility_capacity >= 80 %}high{% elif facility_capacity >= 50 %}medium{% else %}low{% endif %}">{{ facility_capacity }}% Capacity</span>
+                </div>
+                <div class="facility-bar-track">
+                    <div class="facility-bar-fill {% if facility_capacity >= 80 %}high{% elif facility_capacity >= 50 %}medium{% else %}low{% endif %}" style="width: {{ facility_capacity }}%;"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Reasoning Trace -->
+        {% if reasoning_steps %}
+        <div class="result-section">
+            <label>AI Clinical Reasoning</label>
+            <ol class="reasoning-trace">
+                {% for step in reasoning_steps %}
+                <li>{{ step }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+
+        <!-- Symptom Co-occurrence Network Graph -->
+        {% if co_occurring %}
+        <div class="result-section">
+            <label>Symptom Co-occurrence Network Analysis</label>
+            <div class="symptom-graph-container">
+                <svg id="symptom-svg" viewBox="0 0 400 160"></svg>
+            </div>
+            <span class="ppg-hint" style="margin-top: 0.25rem;">Node diameter represents clinical relevance. Edge thickness displays correlation weight.</span>
+        </div>
+        {% endif %}
+
+        <!-- AI Red Flag Safety Limits -->
+        {% if red_flags %}
+        <div class="result-section red-flags-section">
+            <label style="color: var(--color-urgency-high);">Critical Safety Limits (Red Flags)</label>
+            <p class="red-flags-intro">Monitor closely. Seek immediate emergency care if you develop any of these warning signs:</p>
+            <ul class="red-flags-list">
+                {% for flag in red_flags %}
+                <li>
+                    <svg class="flag-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    {{ flag }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- AI Explanation -->
+        <div class="result-section">
+            <label>Triage Evaluation &amp; Reasoning</label>
+            <p class="result-explanation" id="ai-explanation">{{ report.ai_explanation }}</p>
+        </div>
+
+        <!-- Possible Directions to Discuss -->
+        {% if discuss_list %}
+        <div class="result-section">
+            <label>Suggested Topics to Discuss with a Doctor</label>
+            <ul class="discuss-list" id="discuss-list">
+                {% for item in discuss_list %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- SBAR Handoff Audio Panel -->
+        {% if report.sbar_text %}
+        <div class="result-section">
+            <label>Voice Handoff Briefing (Clinician SBAR)</label>
+            <div class="sbar-container">
+                <button type="button" class="sbar-play-btn" id="sbar-play-btn" aria-label="Play SBAR briefing">
+                    <!-- Play Icon -->
+                    <svg class="sbar-play-icon" id="sbar-play-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    <!-- Pause Icon (hidden by default) -->
+                    <svg class="sbar-pause-icon" id="sbar-pause-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display: none; vertical-align: middle; margin-right: 4px;">
+                        <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+                    </svg>
+                    <span id="sbar-btn-text">Play Audio Briefing</span>
+                </button>
+                <!-- Equalizer simulation -->
+                <div class="sbar-equalizer" id="sbar-equalizer">
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                </div>
+            </div>
+            <!-- Written handoff toggle -->
+            <button type="button" class="sbar-text-toggle" id="sbar-text-toggle">Show Written Transcript</button>
+            <div class="sbar-text-panel" id="sbar-text-panel">
+                <p>{{ report.sbar_text }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Shareable Link -->
+        <div class="result-section" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+            <label>Shareable Chart Link</label>
+            <div class="share-section">
+                <input type="text" class="share-url" id="share-url-input" readonly
+                    value="{{ request.url_root }}result/{{ report.uuid }}">
+                <button class="copy-btn" id="copy-share-btn" onclick="copyShareLink()">Copy Link</button>
+                <a class="copy-btn" id="download-pdf-btn" href="/result/{{ report.uuid }}/pdf" style="text-decoration: none; text-align: center;">Download PDF</a>
+            </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="disclaimer">
+            IMPORTANT DISCLAIMER: This tool suggests which specialist to consult and does not provide a medical
+            diagnosis. Always consult a licensed doctor.
+        </div>
+    </div>
+</div>
+
+<div style="text-align: center; margin-bottom: 3rem;">
+    <a href="/" class="btn btn-secondary" id="new-assessment-btn">Begin New Triage Intake</a>
+</div>
+
+<script>
+    function copyShareLink() {
+        const urlInput = document.getElementById('share-url-input');
+        urlInput.select();
+        urlInput.setSelectionRange(0, 99999); /* For mobile devices */
+
+        try {
+            navigator.clipboard.writeText(urlInput.value).then(() => {
+                showToast('Link copied to clipboard');
+            }).catch(err => {
+                // Fallback if clipboard API is not available
+                document.execCommand('copy');
+                showToast('Link copied to clipboard');
+            });
+        } catch (e) {
+            document.execCommand('copy');
+            showToast('Link copied to clipboard');
+        }
+    }
+
+    // --- Geolocation-enhanced "Find near me" ---
+    (function () {
+        const btn = document.getElementById('find-nearby-btn');
+        if (!btn) return;
+
+        const department = {{ report.recommended_department | tojson }};
+        
+        // Map raw clinical departments to search-friendly consumer terms for Google Maps
+        function getSearchQuery(dept) {
+            if (!dept || typeof dept !== 'string') {
+                return 'Hospital';
+            }
+            const term = dept.toLowerCase();
+            if (term.includes('family medicine') || term.includes('general physician') || term.includes('family doctor')) {
+                return 'Family Doctor';
+            }
+            if (term.includes('cardiology') || term.includes('cardio')) {
+                return 'Cardiologist';
+            }
+            if (term.includes('internal medicine') || term.includes('general medicine')) {
+                return 'General Practitioner';
+            }
+            if (term.includes('pulmonology') || term.includes('lung')) {
+                return 'Pulmonologist';
+            }
+            if (term.includes('neurology') || term.includes('neuro')) {
+                return 'Neurologist';
+            }
+            if (term.includes('dermatology') || term.includes('skin')) {
+                return 'Dermatologist';
+            }
+            if (term.includes('pediatric')) {
+                return 'Pediatrician';
+            }
+            if (term.includes('emergency medicine') || term.includes('emergency room')) {
+                return 'Emergency Room';
+            }
+            // Fallback: clean up any slashes and search
+            return dept.replace(/\//g, ' ');
+        }
+
+        const searchQuery = getSearchQuery(department);
+        const baseUrl = 'https://www.google.com/maps/search/?api=1' + String.fromCharCode(38) + 'query=';
+        const fallbackQuery = encodeURIComponent(searchQuery + ' near me');
+
+        // Set fallback href immediately
+        btn.href = baseUrl + fallbackQuery;
+
+        // Try to get precise coordinates to bias the search
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                function (pos) {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    btn.href = baseUrl + encodeURIComponent(searchQuery) + String.fromCharCode(38) + 'center=' + lat + ',' + lng;
+                },
+                function () {
+                    // Permission denied or error — keep fallback, fail silently
+                },
+                { timeout: 5000, maximumAge: 300000 }
+            );
+        }
+    })();
+
+    // --- Symptom Co-occurrence Network SVG Graph ---
+    (function () {
+        const svg = document.getElementById('symptom-svg');
+        if (!svg) return;
+
+        const coOccurring = {{ co_occurring | tojson }};
+        if (!coOccurring || coOccurring.length === 0) return;
+
+        const primarySymptom = {{ report.symptoms_text[:20] | tojson }} + "...";
+        const cx = 200;
+        const cy = 80;
+        const radius = 90;
+        
+        let html = '';
+
+        // Draw Links (drawn first so they render underneath nodes)
+        coOccurring.forEach((node, i) => {
+            const angle = (i * 2 * Math.PI) / coOccurring.length;
+            const x = cx + radius * Math.cos(angle);
+            const y = cy + radius * Math.sin(angle);
+            const strokeWidth = Math.max(1, (node.weight / 100) * 4);
+            const opacity = 0.2 + (node.weight / 100) * 0.6;
+            
+            html += `<line class="link-line" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#3D6B63" stroke-width="${strokeWidth}" stroke-opacity="${opacity}" />`;
+        });
+
+        // Draw Center Node (Primary Symptom)
+        html += `
+            <g class="node-group">
+                <circle class="node-circle center" cx="${cx}" cy="${cy}" r="18" fill="#1C2438" stroke="#FFFFFF" stroke-width="2" />
+                <text class="node-text" x="${cx}" y="${cy + 3}" fill="#FFFFFF" font-size="7" text-anchor="middle">Intake</text>
+            </g>
+        `;
+
+        // Draw Satellite Nodes
+        coOccurring.forEach((node, i) => {
+            const angle = (i * 2 * Math.PI) / coOccurring.length;
+            const x = cx + radius * Math.cos(angle);
+            const y = cy + radius * Math.sin(angle);
+            const nodeRadius = 8 + (node.weight / 100) * 10;
+            
+            // Adjust label text vertical offset based on position
+            const textY = y + (Math.sin(angle) >= 0 ? nodeRadius + 10 : -nodeRadius - 4);
+            
+            html += `
+                <g class="node-group" style="cursor: help;">
+                    <title>${node.symptom}: ${node.weight}% correlation</title>
+                    <circle class="node-circle" cx="${x}" cy="${y}" r="${nodeRadius}" fill="#3D6B63" stroke="#FFFFFF" stroke-width="1.5" />
+                    <text class="node-text" x="${x}" y="${y + 3}" fill="#FFFFFF" font-size="7.5" text-anchor="middle">${node.weight}%</text>
+                    <text x="${x}" y="${textY}" fill="#1C2438" font-family="Inter, sans-serif" font-size="8px" font-weight="600" text-anchor="middle">${node.symptom}</text>
+                </g>
+            `;
+        });
+
+        svg.innerHTML = html;
+    })();
+
+    // --- Voice SBAR Handoff Briefing Player ---
+    (function () {
+        const playBtn = document.getElementById('sbar-play-btn');
+        const playIcon = document.getElementById('sbar-play-icon');
+        const pauseIcon = document.getElementById('sbar-pause-icon');
+        const btnText = document.getElementById('sbar-btn-text');
+        const textToggle = document.getElementById('sbar-text-toggle');
+        const textPanel = document.getElementById('sbar-text-panel');
+        
+        if (!playBtn) return;
+
+        const sbarText = {{ report.sbar_text | tojson }};
+
+        // Check for SpeechSynthesis support
+        if (!('speechSynthesis' in window)) {
+            playBtn.style.display = 'none';
+            if (textToggle) {
+                textToggle.style.display = 'none';
+                if (textPanel) textPanel.style.display = 'block';
+            }
+            return;
+        }
+
+        let isSpeaking = false;
+        let utterance = null;
+
+        playBtn.addEventListener('click', function () {
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+                setPlayingState(false);
+            } else {
+                window.speechSynthesis.cancel(); // clear queue
+                utterance = new SpeechSynthesisUtterance(sbarText);
+                utterance.rate = 0.95; // slightly slower for clinical clarity
+                utterance.pitch = 1.0;
+
+                utterance.onstart = () => setPlayingState(true);
+                utterance.onend = () => setPlayingState(false);
+                utterance.onerror = () => setPlayingState(false);
+
+                window.speechSynthesis.speak(utterance);
+            }
+        });
+
+        function setPlayingState(playing) {
+            isSpeaking = playing;
+            if (playing) {
+                playBtn.classList.add('playing');
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'inline';
+                btnText.textContent = "Pause Briefing";
+            } else {
+                playBtn.classList.remove('playing');
+                playIcon.style.display = 'inline';
+                pauseIcon.style.display = 'none';
+                btnText.textContent = "Play Audio Briefing";
+            }
+        }
+
+        // Toggle written SBAR transcript panel
+        textToggle.addEventListener('click', function () {
+            const isHidden = getComputedStyle(textPanel).display === 'none';
+            if (isHidden) {
+                textPanel.style.display = 'block';
+                textToggle.textContent = "Hide Written Transcript";
+            } else {
+                textPanel.style.display = 'none';
+                textToggle.textContent = "Show Written Transcript";
+            }
+        });
+
+        // Clean up speech synthesis if user navigates away
+        window.addEventListener('beforeunload', () => {
+            window.speechSynthesis.cancel();
+        });
+    })();
+</script>
+{% endblock %}
