@@ -76,7 +76,6 @@ def get_db_connection():
             )
         except Exception as e:
             print(f"Error creating connection pool: {e}")
-            # Fallback to direct connection if pool fails to initialize
             return mysql.connector.connect(
                 host=os.getenv("DB_HOST", "localhost"),
                 user=os.getenv("DB_USER", "root"),
@@ -85,12 +84,23 @@ def get_db_connection():
                 port=int(os.getenv("DB_PORT", 3306))
             )
     
-    return db_pool.get_connection()
+    try:
+        return db_pool.get_connection()
+    except Exception as e:
+        print(f"Pool get_connection failed: {e}. Falling back to direct connection.")
+        return mysql.connector.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            user=os.getenv("DB_USER", "root"),
+            password=os.getenv("DB_PASSWORD", ""),
+            database=os.getenv("DB_NAME", "symptom_triage"),
+            port=int(os.getenv("DB_PORT", 3306))
+        )
 
 def init_db():
     """Initialize database and create reports table if it doesn't exist."""
     try:
-        # First connect without database context to create database if needed
+        # First connect without database context to create database if permissions allow.
+        # This will fail on shared database plans (like Railway), which is expected and handled safely.
         conn = mysql.connector.connect(
             host=os.getenv("DB_HOST", "localhost"),
             user=os.getenv("DB_USER", "root"),
@@ -101,8 +111,11 @@ def init_db():
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS {os.getenv('DB_NAME', 'symptom_triage')}")
         cursor.close()
         conn.close()
+    except Exception as e:
+        print(f"Notice: Bypassed database creation logic (normal on cloud databases like Railway): {e}")
 
-        # Connect with database to create the table
+    try:
+        # Connect directly with the database context (e.g. 'railway' or 'symptom_triage') to create the table
         conn = mysql.connector.connect(
             host=os.getenv("DB_HOST", "localhost"),
             user=os.getenv("DB_USER", "root"),
