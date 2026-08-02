@@ -907,10 +907,19 @@
                 updateUIState(STATES.WAITING, "Scan Failed", "none");
                 overlay.style.display = 'flex';
                 overlayText.textContent = "Scan Failed";
-                guidanceTip.innerHTML = "<strong>Scan Failed:</strong> Signal was too noisy or irregular. Please cover the webcam lens fully, press <em>very lightly</em> (do not block blood flow), hold still, and try again.";
+                guidanceTip.innerHTML = "<strong>Scan Failed:</strong> Signal was too noisy or irregular. Please cover the webcam lens fully, press <em>very lightly</em>, hold still, and try again.<br><br><button type='button' class='btn btn-secondary' style='padding: 0.4rem 0.8rem; font-size: 0.75rem; margin-top: 0.5rem;' onclick='enableManualBPM()'>Enter Pulse Manually</button>";
                 updateProgress(0);
             }
         }
+
+        window.enableManualBPM = function() {
+            hrInput.removeAttribute('readonly');
+            hrInput.value = "72";
+            hrInput.focus();
+            overlay.style.display = 'flex';
+            overlayText.textContent = "BPM: 72 (Manual)";
+            showToast("Manual override: You can now type your heart rate value directly.");
+        };
     })();
 </script>
 {% endblock %}
