@@ -60,6 +60,17 @@
         </header>
         
         <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        {% for category, message in messages %}
+                            <div class="glass-card" style="padding: 1rem 1.5rem; border-color: var(--color-danger); background-color: rgba(239, 68, 68, 0.05); color: var(--color-danger); font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-sm); margin-bottom: 0;">
+                                ⚠️ {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
             {% block content %}{% endblock %}
         </main>
     </div>

@@ -60,28 +60,50 @@ HOSPITAL_FACILITIES = {
     ]
 }
 
+def get_db_config():
+    """Retrieve database connection parameters from environment variables with automatic fallbacks for Railway, Clever Cloud, etc."""
+    host = os.getenv("DB_HOST") or os.getenv("MYSQLHOST") or os.getenv("MYSQL_HOST") or "localhost"
+    user = os.getenv("DB_USER") or os.getenv("MYSQLUSER") or os.getenv("MYSQL_USER") or "root"
+    password = os.getenv("DB_PASSWORD") or os.getenv("MYSQLPASSWORD") or os.getenv("MYSQL_PASSWORD") or ""
+    database = os.getenv("DB_NAME") or os.getenv("MYSQLDATABASE") or os.getenv("MYSQL_DATABASE") or "symptom_triage"
+    
+    port_str = os.getenv("DB_PORT") or os.getenv("MYSQLPORT") or os.getenv("MYSQL_PORT") or "3306"
+    try:
+        port = int(port_str)
+    except ValueError:
+        port = 3306
+        
+    return {
+        "host": host,
+        "user": user,
+        "password": password,
+        "database": database,
+        "port": port
+    }
+
 def get_db_connection():
     """Get a database connection from the pool, or create a new connection if pooling is not initialized."""
     global db_pool
+    config = get_db_config()
     if db_pool is None:
         try:
             db_pool = pooling.MySQLConnectionPool(
                 pool_name="triage_pool",
                 pool_size=5,
-                host=os.getenv("DB_HOST", "localhost"),
-                user=os.getenv("DB_USER", "root"),
-                password=os.getenv("DB_PASSWORD", ""),
-                database=os.getenv("DB_NAME", "symptom_triage"),
-                port=int(os.getenv("DB_PORT", 3306))
+                host=config["host"],
+                user=config["user"],
+                password=config["password"],
+                database=config["database"],
+                port=config["port"]
             )
         except Exception as e:
             print(f"Error creating connection pool: {e}")
             return mysql.connector.connect(
-                host=os.getenv("DB_HOST", "localhost"),
-                user=os.getenv("DB_USER", "root"),
-                password=os.getenv("DB_PASSWORD", ""),
-                database=os.getenv("DB_NAME", "symptom_triage"),
-                port=int(os.getenv("DB_PORT", 3306))
+                host=config["host"],
+                user=config["user"],
+                password=config["password"],
+                database=config["database"],
+                port=config["port"]
             )
     
     try:
@@ -89,26 +111,27 @@ def get_db_connection():
     except Exception as e:
         print(f"Pool get_connection failed: {e}. Falling back to direct connection.")
         return mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            user=os.getenv("DB_USER", "root"),
-            password=os.getenv("DB_PASSWORD", ""),
-            database=os.getenv("DB_NAME", "symptom_triage"),
-            port=int(os.getenv("DB_PORT", 3306))
+            host=config["host"],
+            user=config["user"],
+            password=config["password"],
+            database=config["database"],
+            port=config["port"]
         )
 
 def init_db():
     """Initialize database and create reports table if it doesn't exist."""
+    config = get_db_config()
     try:
         # First connect without database context to create database if permissions allow.
         # This will fail on shared database plans (like Railway), which is expected and handled safely.
         conn = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            user=os.getenv("DB_USER", "root"),
-            password=os.getenv("DB_PASSWORD", ""),
-            port=int(os.getenv("DB_PORT", 3306))
+            host=config["host"],
+            user=config["user"],
+            password=config["password"],
+            port=config["port"]
         )
         cursor = conn.cursor()
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {os.getenv('DB_NAME', 'symptom_triage')}")
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {config['database']}")
         cursor.close()
         conn.close()
     except Exception as e:
@@ -117,11 +140,11 @@ def init_db():
     try:
         # Connect directly with the database context (e.g. 'railway' or 'symptom_triage') to create the table
         conn = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            user=os.getenv("DB_USER", "root"),
-            password=os.getenv("DB_PASSWORD", ""),
-            port=int(os.getenv("DB_PORT", 3306)),
-            database=os.getenv("DB_NAME", "symptom_triage")
+            host=config["host"],
+            user=config["user"],
+            password=config["password"],
+            port=config["port"],
+            database=config["database"]
         )
         cursor = conn.cursor()
         cursor.execute("""
@@ -155,7 +178,7 @@ def init_db():
         for col_name, col_def in columns_to_add.items():
             cursor.execute(f"""
                 SELECT COUNT(*) FROM information_schema.COLUMNS 
-                WHERE TABLE_SCHEMA = '{os.getenv('DB_NAME', 'symptom_triage')}' 
+                WHERE TABLE_SCHEMA = '{config['database']}' 
                 AND TABLE_NAME = 'reports' 
                 AND COLUMN_NAME = '{col_name}'
             """)
