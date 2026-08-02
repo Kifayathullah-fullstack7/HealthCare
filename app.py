@@ -20,6 +20,16 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "symptom_triage_secret_key_123")
 
+# Auto-initialize database on first request for serverless environments (Vercel)
+db_initialized = False
+
+@app.before_request
+def initialize_database_before_requests():
+    global db_initialized
+    if not db_initialized:
+        init_db()
+        db_initialized = True
+
 # Connection Pool Variable
 db_pool = None
 
@@ -509,7 +519,10 @@ def result(report_uuid):
         
     # Format date nicely
     if report.get("created_at"):
-        report["created_at"] = report["created_at"].strftime("%Y-%m-%d %H:%M UTC")
+        if hasattr(report["created_at"], "strftime"):
+            report["created_at"] = report["created_at"].strftime("%Y-%m-%d %H:%M UTC")
+        else:
+            report["created_at"] = str(report["created_at"])
 
     # Deserialize lists from database fields or provide fallbacks
     try:
@@ -585,7 +598,10 @@ def result_pdf(report_uuid):
 
     created_at = report.get("created_at")
     if created_at:
-        created_at = created_at.strftime("%Y-%m-%d %H:%M UTC")
+        if hasattr(created_at, "strftime"):
+            created_at = created_at.strftime("%Y-%m-%d %H:%M UTC")
+        else:
+            created_at = str(created_at)
     else:
         created_at = "N/A"
 
