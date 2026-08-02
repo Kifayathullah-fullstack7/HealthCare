@@ -13,6 +13,7 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, ListFlowable, ListItem
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from xml.sax.saxutils import escape as xml_escape
 
 # Load environment variables
 load_dotenv()
@@ -419,30 +420,6 @@ def intake():
     """Render the patient symptoms intake page."""
     return render_template('intake.html')
 
-@app.route('/debug/env')
-def debug_env():
-    """Temporary diagnostic route — shows what DB config Render is reading. Remove after debugging."""
-    from flask import jsonify
-    cfg = get_db_config()
-    # Mask password for safety
-    masked = dict(cfg)
-    if masked.get("password"):
-        masked["password"] = "*" * len(masked["password"])
-    
-    raw_vars = {
-        "DB_HOST": os.getenv("DB_HOST", "NOT SET"),
-        "DB_USER": os.getenv("DB_USER", "NOT SET"),
-        "DB_NAME": os.getenv("DB_NAME", "NOT SET"),
-        "DB_PORT": os.getenv("DB_PORT", "NOT SET"),
-        "MYSQLHOST": os.getenv("MYSQLHOST", "NOT SET"),
-        "MYSQLUSER": os.getenv("MYSQLUSER", "NOT SET"),
-        "MYSQLDATABASE": os.getenv("MYSQLDATABASE", "NOT SET"),
-        "MYSQLPORT": os.getenv("MYSQLPORT", "NOT SET"),
-    }
-    return jsonify({
-        "resolved_config": masked,
-        "raw_env_vars": raw_vars
-    })
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -662,6 +639,12 @@ def result_pdf(report_uuid):
     except json.JSONDecodeError:
         pass
 
+    # Escape all LLM-generated text for safe ReportLab XML rendering
+    explanation_text = xml_escape(str(explanation_text)) if explanation_text else ""
+    discuss_list = [xml_escape(str(item)) for item in discuss_list]
+    reasoning_steps = [xml_escape(str(step)) for step in reasoning_steps]
+    dept_text_safe = xml_escape(str(report["recommended_department"]))
+
     created_at = report.get("created_at")
     if created_at:
         if hasattr(created_at, "strftime"):
@@ -795,7 +778,7 @@ def result_pdf(report_uuid):
 
     # Department
     elements.append(Paragraph("RECOMMENDED SPECIALIST / DEPARTMENT", style_section_label))
-    elements.append(Paragraph(report["recommended_department"], style_department))
+    elements.append(Paragraph(dept_text_safe, style_department))
     elements.append(Paragraph(f"Confidence: {confidence}%", style_meta))
     elements.append(Spacer(1, 6))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E2DED4"), spaceAfter=10))
@@ -837,7 +820,12 @@ def result_pdf(report_uuid):
     ))
 
     # Build
-    doc.build(elements)
+    try:
+        doc.build(elements)
+    except Exception as e:
+        print(f"PDF build failed for report {report_uuid}: {e}")
+        flash("Sorry, the PDF couldn't be generated for this report. Please try again.", "error")
+        return redirect(url_for('result', report_uuid=report_uuid))
     buf.seek(0)
 
     response = make_response(buf.read())
