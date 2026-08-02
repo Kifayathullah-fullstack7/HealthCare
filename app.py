@@ -419,6 +419,31 @@ def intake():
     """Render the patient symptoms intake page."""
     return render_template('intake.html')
 
+@app.route('/debug/env')
+def debug_env():
+    """Temporary diagnostic route — shows what DB config Render is reading. Remove after debugging."""
+    from flask import jsonify
+    cfg = get_db_config()
+    # Mask password for safety
+    masked = dict(cfg)
+    if masked.get("password"):
+        masked["password"] = "*" * len(masked["password"])
+    
+    raw_vars = {
+        "DB_HOST": os.getenv("DB_HOST", "NOT SET"),
+        "DB_USER": os.getenv("DB_USER", "NOT SET"),
+        "DB_NAME": os.getenv("DB_NAME", "NOT SET"),
+        "DB_PORT": os.getenv("DB_PORT", "NOT SET"),
+        "MYSQLHOST": os.getenv("MYSQLHOST", "NOT SET"),
+        "MYSQLUSER": os.getenv("MYSQLUSER", "NOT SET"),
+        "MYSQLDATABASE": os.getenv("MYSQLDATABASE", "NOT SET"),
+        "MYSQLPORT": os.getenv("MYSQLPORT", "NOT SET"),
+    }
+    return jsonify({
+        "resolved_config": masked,
+        "raw_env_vars": raw_vars
+    })
+
 @app.route('/analyze', methods=['POST'])
 def analyze():
     """Handle intake form submissions, trigger triage analysis, write to DB, and redirect to report."""
