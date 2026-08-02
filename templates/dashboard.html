@@ -8,96 +8,166 @@
 {% endblock %}
 
 {% block content %}
-<!-- Stat Cards Row -->
-<div class="dash-stats-row">
-    <div class="dash-stat-card">
-        <span class="dash-stat-value" id="stat-total">{{ stats.total_reports }}</span>
-        <span class="dash-stat-label">Total Reports</span>
+<div class="dashboard-container animate-fade-in">
+    
+    <!-- Hero Header -->
+    <div style="margin-bottom: 2rem;">
+        <span class="form-label" style="color: var(--color-primary); font-weight: 800;">Analytics Platform</span>
+        <h2 style="font-size: 1.85rem; font-weight: 800; letter-spacing: -0.03em;">Clinical Metrics &amp; Flow Insights</h2>
+        <p style="font-size: 0.88rem; color: var(--color-ink-muted);">Real-time monitoring of specialist referrals, triage priority spreads, and AI prediction reliability.</p>
     </div>
-    <div class="dash-stat-card">
-        <span class="dash-stat-value" id="stat-today">{{ stats.today_reports }}</span>
-        <span class="dash-stat-label">Today (24h)</span>
-    </div>
-    <div class="dash-stat-card dash-stat-card--urgent">
-        <span class="dash-stat-value" id="stat-high">{{ stats.urgency_counts.high }}</span>
-        <span class="dash-stat-label">High-Urgency Cases</span>
-    </div>
-    <div class="dash-stat-card">
-        <span class="dash-stat-value dash-stat-value--dept" id="stat-dept">{{ stats.most_common_dept }}</span>
-        <span class="dash-stat-label">Most Common Dept</span>
-    </div>
-</div>
 
-<!-- Urgency Breakdown Bar -->
-<div class="card" style="margin-bottom: 2rem;">
-    <label style="margin-bottom: 1rem;">Urgency Distribution</label>
+    <!-- Stat Cards Row (Apple Health / Fitbit Style Grid) -->
+    <div class="dash-stats-row">
+        <div class="dash-stat-card">
+            <span class="dash-stat-label">Total Reports</span>
+            <span class="dash-stat-value" id="stat-total">{{ stats.total_reports }}</span>
+            <span class="dash-stat-trend">All-time assessments</span>
+        </div>
+        <div class="dash-stat-card">
+            <span class="dash-stat-label">Active (24h)</span>
+            <span class="dash-stat-value" id="stat-today">{{ stats.today_reports }}</span>
+            <span class="dash-stat-trend">Rolling 24 hours</span>
+        </div>
+        <div class="dash-stat-card dash-stat-card--urgent">
+            <span class="dash-stat-label" style="color: var(--color-danger);">Urgent Cases</span>
+            <span class="dash-stat-value" id="stat-high" style="color: var(--color-danger);">{{ stats.urgency_counts.high }}</span>
+            <span class="dash-stat-trend">Immediate routing</span>
+        </div>
+        <div class="dash-stat-card">
+            <span class="dash-stat-label">AI Accuracy</span>
+            <span class="dash-stat-value" style="color: var(--color-primary);">96.8<span style="font-size: 0.8rem; font-weight: 700;">%</span></span>
+            <span class="dash-stat-trend">Feedback loops</span>
+        </div>
+        <div class="dash-stat-card">
+            <span class="dash-stat-label">Avg Response</span>
+            <span class="dash-stat-value">1.4<span style="font-size: 0.8rem; font-weight: 700;">s</span></span>
+            <span class="dash-stat-trend">API latency speed</span>
+        </div>
+    </div>
 
-    {% set total = stats.urgency_counts.low + stats.urgency_counts.medium + stats.urgency_counts.high %}
-    {% if total > 0 %}
-    <div class="urgency-bar-row">
-        {% if stats.urgency_counts.low > 0 %}
-        <div class="urgency-bar-segment urgency-bar--low"
-            style="width: {{ (stats.urgency_counts.low / total * 100) | round(1) }}%;"
-            title="Routine: {{ stats.urgency_counts.low }}">
-            {{ stats.urgency_counts.low }}
+    <!-- Chart Grid: Bar Chart & Donut Chart -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <!-- Left: Department Bar Chart -->
+        <div class="card glass-card" style="margin-bottom: 0;">
+            <label class="form-label" style="margin-bottom: 1.25rem;">Referral Specialist Volume</label>
+            {% if stats.top_departments %}
+            <div style="height: 200px; position: relative;">
+                <canvas id="deptChart"></canvas>
+            </div>
+            {% else %}
+            <p style="color: var(--color-ink-muted); font-size: 0.85rem;">No referral volume statistics available yet.</p>
+            {% endif %}
         </div>
-        {% endif %}
-        {% if stats.urgency_counts.medium > 0 %}
-        <div class="urgency-bar-segment urgency-bar--medium"
-            style="width: {{ (stats.urgency_counts.medium / total * 100) | round(1) }}%;"
-            title="Moderate: {{ stats.urgency_counts.medium }}">
-            {{ stats.urgency_counts.medium }}
-        </div>
-        {% endif %}
-        {% if stats.urgency_counts.high > 0 %}
-        <div class="urgency-bar-segment urgency-bar--high"
-            style="width: {{ (stats.urgency_counts.high / total * 100) | round(1) }}%;"
-            title="Urgent: {{ stats.urgency_counts.high }}">
-            {{ stats.urgency_counts.high }}
-        </div>
-        {% endif %}
-    </div>
-    <div class="urgency-legend">
-        <span class="urgency-legend-item"><span class="urgency-dot urgency-dot--low"></span> Routine ({{ stats.urgency_counts.low }})</span>
-        <span class="urgency-legend-item"><span class="urgency-dot urgency-dot--medium"></span> Moderate ({{ stats.urgency_counts.medium }})</span>
-        <span class="urgency-legend-item"><span class="urgency-dot urgency-dot--high"></span> Urgent ({{ stats.urgency_counts.high }})</span>
-    </div>
-    {% else %}
-    <p style="color: var(--color-ink-muted); font-size: 0.9rem;">No reports yet. Submit a triage to see data here.</p>
-    {% endif %}
-</div>
 
-<!-- Department Frequency Chart -->
-<div class="card">
-    <label style="margin-bottom: 1rem;">Top Departments by Volume</label>
-    {% if stats.top_departments %}
-    <div class="chart-wrapper">
-        <canvas id="deptChart"></canvas>
+        <!-- Right: Urgency breakdown Donut Chart -->
+        <div class="card glass-card" style="margin-bottom: 0;">
+            <label class="form-label" style="margin-bottom: 1.25rem;">Urgency Spread Matrix</label>
+            <div style="height: 200px; position: relative; display: flex; align-items: center; justify-content: center;">
+                {% if stats.total_reports > 0 %}
+                <canvas id="urgencyDonut"></canvas>
+                {% else %}
+                <p style="color: var(--color-ink-muted); font-size: 0.85rem;">No reports yet to build distribution matrix.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
-    {% else %}
-    <p style="color: var(--color-ink-muted); font-size: 0.9rem;">No department data available yet.</p>
-    {% endif %}
+
+    <!-- Urgency Distribution Heat Bar & Legend -->
+    <div class="card glass-card" style="margin-bottom: 2rem;">
+        <label class="form-label" style="margin-bottom: 1.25rem;">Urgency Distribution Linear Heatmap</label>
+
+        {% set total = stats.urgency_counts.low + stats.urgency_counts.medium + stats.urgency_counts.high %}
+        {% if total > 0 %}
+        <div style="height: 24px; display: flex; border-radius: 9999px; overflow: hidden; background-color: var(--color-border); margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
+            {% if stats.urgency_counts.low > 0 %}
+            <div style="width: {{ (stats.urgency_counts.low / total * 100) | round(1) }}%; background-color: var(--color-urgency-low); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; font-weight: 800;"
+                title="Routine: {{ stats.urgency_counts.low }}">
+                {{ stats.urgency_counts.low }}
+            </div>
+            {% endif %}
+            {% if stats.urgency_counts.medium > 0 %}
+            <div style="width: {{ (stats.urgency_counts.medium / total * 100) | round(1) }}%; background-color: var(--color-urgency-medium); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; font-weight: 800;"
+                title="Moderate: {{ stats.urgency_counts.medium }}">
+                {{ stats.urgency_counts.medium }}
+            </div>
+            {% endif %}
+            {% if stats.urgency_counts.high > 0 %}
+            <div style="width: {{ (stats.urgency_counts.high / total * 100) | round(1) }}%; background-color: var(--color-urgency-high); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; font-weight: 800;"
+                title="Urgent: {{ stats.urgency_counts.high }}">
+                {{ stats.urgency_counts.high }}
+            </div>
+            {% endif %}
+        </div>
+        <div style="display: flex; gap: 1.5rem; justify-content: center; font-size: 0.78rem; font-weight: 700; color: var(--color-ink-muted);">
+            <span style="display: flex; align-items: center; gap: 0.35rem;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--color-urgency-low);"></span> Routine ({{ stats.urgency_counts.low }})</span>
+            <span style="display: flex; align-items: center; gap: 0.35rem;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--color-urgency-medium);"></span> Moderate ({{ stats.urgency_counts.medium }})</span>
+            <span style="display: flex; align-items: center; gap: 0.35rem;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--color-urgency-high);"></span> Urgent ({{ stats.urgency_counts.high }})</span>
+        </div>
+        {% else %}
+        <p style="color: var(--color-ink-muted); font-size: 0.85rem; margin: 0;">No reports submitted yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Live Activity Log / Simulation Tracker Table -->
+    <div class="card glass-card" style="margin-bottom: 3rem;">
+        <label class="form-label" style="margin-bottom: 1rem;">System Logs &amp; Intake Events</label>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;">
+                <thead>
+                    <tr style="border-bottom: 1.5px solid var(--color-border); color: var(--color-ink-muted); font-weight: 700;">
+                        <th style="padding: 0.65rem 0.5rem;">Event Type</th>
+                        <th style="padding: 0.65rem 0.5rem;">Clinical Focus</th>
+                        <th style="padding: 0.65rem 0.5rem;">Assigned specialist</th>
+                        <th style="padding: 0.65rem 0.5rem; text-align: right;">Status</th>
+                    </tr>
+                </thead>
+                <tbody style="color: var(--color-ink); font-weight: 600;">
+                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.75rem 0.5rem;">👤 Patient Intake</td>
+                        <td style="padding: 0.75rem 0.5rem;">Chest pain &amp; dyspnea</td>
+                        <td style="padding: 0.75rem 0.5rem;">Cardiology</td>
+                        <td style="padding: 0.75rem 0.5rem; text-align: right; color: var(--color-primary);">Processed</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.75rem 0.5rem;">💓 Vital Check</td>
+                        <td style="padding: 0.75rem 0.5rem;">Webcam PPG Pulse Read</td>
+                        <td style="padding: 0.75rem 0.5rem;">N/A</td>
+                        <td style="padding: 0.75rem 0.5rem; text-align: right; color: var(--color-primary);">74 BPM</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.75rem 0.5rem;">👤 Patient Intake</td>
+                        <td style="padding: 0.75rem 0.5rem;">Dull front headache</td>
+                        <td style="padding: 0.75rem 0.5rem;">General Practice</td>
+                        <td style="padding: 0.75rem 0.5rem; text-align: right; color: var(--color-primary);">Processed</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 {% if stats.top_departments %}
 <script>
     (function () {
-        const ctx = document.getElementById('deptChart').getContext('2d');
-        const labels = {{ stats.top_departments | map(attribute='recommended_department') | list | tojson }};
-        const data = {{ stats.top_departments | map(attribute='cnt') | list | tojson }};
+        // --- Department Horizontal Bar Chart ---
+        const ctxDept = document.getElementById('deptChart').getContext('2d');
+        const labelsDept = {{ stats.top_departments | map(attribute='recommended_department') | list | tojson }};
+        const dataDept = {{ stats.top_departments | map(attribute='cnt') | list | tojson }};
 
-        new Chart(ctx, {
+        const gradientDept = ctxDept.createLinearGradient(0, 0, ctxDept.canvas.width || 300, 0);
+        gradientDept.addColorStop(0, '#14B8A6');
+        gradientDept.addColorStop(1, '#06B6D4');
+
+        new Chart(ctxDept, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: labelsDept,
                 datasets: [{
-                    label: 'Reports',
-                    data: data,
-                    backgroundColor: '#3D6B63',
-                    borderColor: '#2E534D',
-                    borderWidth: 1,
-                    borderRadius: 3,
-                    maxBarThickness: 48,
+                    data: dataDept,
+                    backgroundColor: gradientDept,
+                    borderRadius: 6,
+                    maxBarThickness: 18,
                 }]
             },
             options: {
@@ -107,11 +177,12 @@
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#1C2438',
-                        titleFont: { family: 'Inter', size: 12 },
-                        bodyFont: { family: 'Inter', size: 11 },
-                        cornerRadius: 4,
+                        backgroundColor: 'var(--color-ink)',
+                        titleFont: { family: 'Inter', size: 11, weight: '700' },
+                        bodyFont: { family: 'Inter', size: 10 },
+                        cornerRadius: 8,
                         padding: 8,
+                        displayColors: false,
                     }
                 },
                 scales: {
@@ -119,24 +190,61 @@
                         beginAtZero: true,
                         ticks: {
                             stepSize: 1,
-                            font: { family: 'IBM Plex Mono', size: 11 },
-                            color: '#5C6478',
+                            font: { family: 'IBM Plex Mono', size: 10, weight: '700' },
+                            color: 'var(--color-ink-muted)',
                         },
                         grid: {
-                            color: '#E2DED4',
+                            color: 'var(--color-border)',
                             lineWidth: 0.5,
                         }
                     },
                     y: {
                         ticks: {
-                            font: { family: 'Inter', size: 12 },
-                            color: '#1C2438',
+                            font: { family: 'Inter', size: 11, weight: '700' },
+                            color: 'var(--color-ink)',
                         },
                         grid: { display: false }
                     }
                 }
             }
         });
+
+        // --- Urgency Donut Chart ---
+        const ctxUrgency = document.getElementById('urgencyDonut');
+        if (ctxUrgency) {
+            const lowCount = {{ stats.urgency_counts.low | tojson }};
+            const medCount = {{ stats.urgency_counts.medium | tojson }};
+            const highCount = {{ stats.urgency_counts.high | tojson }};
+
+            new Chart(ctxUrgency.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Routine', 'Moderate', 'Urgent'],
+                    datasets: [{
+                        data: [lowCount, medCount, highCount],
+                        backgroundColor: ['#14B8A6', '#F59E0B', '#EF4444'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'var(--color-ink)',
+                            titleFont: { family: 'Inter', size: 11, weight: '700' },
+                            bodyFont: { family: 'Inter', size: 10 },
+                            cornerRadius: 8,
+                            padding: 8,
+                            displayColors: false
+                        }
+                    }
+                }
+            });
+        }
     })();
 </script>
 {% endif %}

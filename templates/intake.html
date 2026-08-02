@@ -3,131 +3,457 @@
 {% block title %}Patient Intake - SymptomTriage AI{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2 style="margin-bottom: 1.5rem; font-family: var(--font-display);">Patient Symptom Intake Chart</h2>
-    <p style="color: var(--color-ink-muted); margin-bottom: 2rem;">Please describe the symptoms as accurately as possible. This information is processed securely using AI to guide you to the appropriate specialist.</p>
-    
-    <form action="/analyze" method="POST">
-        <!-- Symptoms Text Box -->
-        <div class="form-group">
-            <label for="symptoms_text">1. Describe Symptoms (Free-Text)</label>
-            <div class="textarea-mic-wrapper">
-                <textarea id="symptoms_text" name="symptoms_text" placeholder="Describe what you are feeling, e.g. sharp chest pain, itchy red rash on arm, dull headache..." required></textarea>
-                <button type="button" class="mic-btn" id="mic-btn" title="Tap to speak your symptoms" aria-label="Voice input">
-                    <svg class="mic-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
-                        <line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
-                </button>
+<!-- Hero Section -->
+<div class="hero-section animate-fade-in">
+    <h2 class="hero-tagline">Welcome to <span>SymptomTriage AI</span></h2>
+    <p class="hero-sub">AI Clinical Decision Support &amp; Smart Specialist Recommendation Platform</p>
+    <h1 style="display: none;">Patient Symptom Intake Chart</h1>
+    <div class="hero-features-checklist">
+        <span class="checklist-item"><span class="checklist-icon">✔</span> AI Powered</span>
+        <span class="checklist-item"><span class="checklist-icon">✔</span> Webcam Pulse Detection</span>
+        <span class="checklist-item"><span class="checklist-icon">✔</span> Clinical Triage</span>
+        <span class="checklist-item"><span class="checklist-icon">✔</span> Medical Analytics</span>
+    </div>
+</div>
+
+<!-- Multi-Step Progress Tracker Bar -->
+<div class="card glass-card animate-fade-in" style="padding: 1.5rem 2rem; margin-bottom: 1.5rem;">
+    <div class="step-progress-wrapper">
+        <div class="step-progress-line">
+            <div class="step-progress-line-fill" id="step-progress-line-fill"></div>
+        </div>
+        <div class="step-dot active" data-step="1">1</div>
+        <div class="step-dot" data-step="2">2</div>
+        <div class="step-dot" data-step="3">3</div>
+        <div class="step-dot" data-step="4">4</div>
+        <div class="step-dot" data-step="5">5</div>
+        <div class="step-dot" data-step="6">6</div>
+    </div>
+</div>
+
+<!-- Main Patient Intake Form -->
+<div class="card glass-card animate-fade-in" style="margin-top: 0;">
+    <form action="/analyze" method="POST" id="intake-form">
+        
+        <!-- ==================== STEP 1: DESCRIBE SYMPTOMS ==================== -->
+        <div class="form-step active" id="step-1-panel">
+            <div class="step-header">
+                <span class="form-label" style="color: var(--color-primary);">Step 1 of 6</span>
+                <h3 class="step-title">Describe Your Symptoms</h3>
+                <p class="step-desc">Enter your primary complaints in plain words. Voice dictation is available.</p>
             </div>
-            <span class="mic-hint" id="mic-hint">Or tap the mic to describe your symptoms out loud</span>
-        </div>
-        
-        <!-- Duration Field -->
-        <div class="form-group">
-            <label for="duration">2. Duration of Symptoms</label>
-            <input type="text" id="duration" name="duration" placeholder="e.g. 2 hours, 3 days, since this morning..." required>
-        </div>
-        
-        <!-- Webcam PPG Heart Rate Sensor -->
-        <div class="form-group">
-            <label>3. Clinical Pulse Sensor (Webcam PPG)</label>
-            <div class="ppg-container">
-                <div class="ppg-layout">
-                    <!-- Circular video preview -->
-                    <div class="ppg-video-wrapper">
-                        <video id="ppg-video" autoplay playsinline muted></video>
-                        <div class="ppg-finger-overlay" id="ppg-finger-overlay">
-                            <span>Place finger over camera lens</span>
+            
+            <div class="form-group">
+                <div class="chat-symptom-wrapper">
+                    <textarea id="symptoms_text" name="symptoms_text" placeholder="Describe your symptoms in detail (e.g., sudden severe chest pain radiating to left arm...)" required></textarea>
+                    
+                    <div class="chat-symptom-footer">
+                        <span class="chat-input-counter" id="char-counter">0 / 1000 characters</span>
+                        <div class="chat-action-buttons">
+                            <!-- Clear Button -->
+                            <button type="button" class="util-btn" id="clear-symptoms-btn" title="Clear input text">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                            <!-- Microphone Voice Input Button -->
+                            <button type="button" class="mic-btn" id="mic-btn" title="Tap to speak symptoms">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                    <line x1="12" y1="19" x2="12" y2="23"/>
+                                    <line x1="8" y1="23" x2="16" y2="23"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                    <!-- Real-time pulse wave graph -->
-                    <div class="ppg-graph-wrapper">
-                        <canvas id="ppg-canvas" width="280" height="70"></canvas>
-                        <div class="ppg-status" id="ppg-status">Sensor Ready</div>
+                </div>
+
+                <!-- Animated Waveform display when microphone is listening -->
+                <div class="mic-waveform-overlay" id="mic-waveform-overlay">
+                    <span class="voice-status-text">Listening...</span>
+                    <div class="voice-wave-container">
+                        <span class="voice-wave-bar"></span>
+                        <span class="voice-wave-bar"></span>
+                        <span class="voice-wave-bar"></span>
+                        <span class="voice-wave-bar"></span>
+                        <span class="voice-wave-bar"></span>
                     </div>
                 </div>
-                <div class="ppg-controls">
-                    <button type="button" class="btn btn-secondary" id="ppg-start-btn" style="margin-top: 0; padding: 0.4rem 0.9rem; font-size: 0.82rem;">Start Pulse Scan</button>
-                    <div class="ppg-input-wrapper">
-                        <input type="number" id="heart_rate" name="heart_rate" placeholder="--" readonly>
-                        <span class="ppg-unit">BPM</span>
+
+                <!-- Preset Suggestions Chips Row -->
+                <div class="symptom-preset-row">
+                    <button type="button" class="symptom-chip" onclick="applySymptomPreset('Chest Pain')">❤️ Chest Pain</button>
+                    <button type="button" class="symptom-chip" onclick="applySymptomPreset('Severe Headache')">🧠 Headache</button>
+                    <button type="button" class="symptom-chip" onclick="applySymptomPreset('High Fever')">🌡️ Fever</button>
+                    <button type="button" class="symptom-chip" onclick="applySymptomPreset('Coughing and shortness of breath')">🫁 Cough</button>
+                    <button type="button" class="symptom-chip" onclick="applySymptomPreset('Chronic fatigue and weakness')">⚡ Fatigue</button>
+                    <button type="button" class="symptom-chip" onclick="applySymptomPreset('Severe lower back pain')">🦵 Back Pain</button>
+                </div>
+            </div>
+            
+            <div class="step-navigation-footer">
+                <div></div>
+                <button type="button" class="btn btn-primary" onclick="goToStep(2)">Next Step</button>
+            </div>
+        </div>
+
+        <!-- ==================== STEP 2: DURATION OF SYMPTOMS ==================== -->
+        <div class="form-step" id="step-2-panel">
+            <div class="step-header">
+                <span class="form-label" style="color: var(--color-primary);">Step 2 of 6</span>
+                <h3 class="step-title">Duration of Symptoms</h3>
+                <p class="step-desc">How long have you been experiencing these clinical symptoms?</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="duration">Enter Duration</label>
+                <input type="text" id="duration" name="duration" placeholder="e.g., 2 hours, 3 days, since yesterday morning..." required>
+            </div>
+            
+            <div class="step-navigation-footer">
+                <button type="button" class="btn btn-secondary" onclick="goToStep(1)">Back</button>
+                <button type="button" class="btn btn-primary" onclick="goToStep(3)">Next Step</button>
+            </div>
+        </div>
+
+        <!-- ==================== STEP 3: WEBCAM PPG PULSE SCANNER ==================== -->
+        <div class="form-step" id="step-3-panel">
+            <div class="step-header">
+                <span class="form-label" style="color: var(--color-primary);">Step 3 of 6</span>
+                <h3 class="step-title">Webcam Vital Pulse Scan</h3>
+                <p class="step-desc">Position your index finger over your webcam to capture your heart rate vital sign.</p>
+            </div>
+            
+            <div class="form-group">
+                <div class="ppg-container">
+                    <div class="ppg-layout">
+                        <!-- Camera preview circle hub -->
+                        <div class="ppg-sensor-hub" id="ppg-sensor-hub">
+                            <svg class="ppg-progress-ring-svg" width="110" height="110">
+                                <circle class="ppg-progress-ring-bg" cx="55" cy="55" r="45"></circle>
+                                <circle class="ppg-progress-ring-fill" id="ppg-progress-ring-fill" cx="55" cy="55" r="45"></circle>
+                            </svg>
+                            <div class="ppg-video-wrapper">
+                                <video id="ppg-video" autoplay playsinline muted></video>
+                                <div class="ppg-finger-overlay" id="ppg-finger-overlay">
+                                    <span id="ppg-overlay-text">Sensor Ready</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Pulse graph wave and status information -->
+                        <div class="ppg-graph-wrapper">
+                            <canvas id="ppg-canvas" width="320" height="55"></canvas>
+                            <div class="ppg-metric-row">
+                                <div class="ppg-status" id="ppg-status">Tap "Start Scan" to begin</div>
+                                <div class="ppg-signal-quality">
+                                    <span class="quality-dot" id="ppg-quality-dot"></span>
+                                    <span id="ppg-quality-text">Signal: None</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Controls -->
+                    <div class="ppg-controls">
+                        <button type="button" class="btn btn-secondary" id="ppg-start-btn">Start Pulse Scan</button>
+                        <div class="ppg-readout-card">
+                            <input type="number" id="heart_rate" name="heart_rate" placeholder="--" readonly>
+                            <span class="ppg-unit">BPM</span>
+                        </div>
+                    </div>
+                    <span class="ppg-hint" id="ppg-guidance-tip">Instruction: Completely cover your webcam lens using your fingertip. Lightly press and hold still.</span>
+                </div>
+            </div>
+            
+            <div class="step-navigation-footer">
+                <button type="button" class="btn btn-secondary" onclick="goToStep(2)">Back</button>
+                <button type="button" class="btn btn-primary" onclick="goToStep(4)">Next Step</button>
+            </div>
+        </div>
+
+        <!-- ==================== STEP 4: SEVERITY SCORE ==================== -->
+        <div class="form-step" id="step-4-panel">
+            <div class="step-header">
+                <span class="form-label" style="color: var(--color-primary);">Step 4 of 6</span>
+                <h3 class="step-title">Symptom Severity Score</h3>
+                <p class="step-desc">Rate your pain or discomfort level on a scale from 1 to 10.</p>
+            </div>
+            
+            <div class="form-group">
+                <div class="slider-container">
+                    <div class="slider-wrapper">
+                        <input type="range" id="severity" name="severity" min="1" max="10" value="5" step="1" oninput="updateSeverityVal(this.value)">
+                        <span class="slider-value" id="severityVal">5</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; font-size: 0.72rem; font-weight: 700; color: var(--color-ink-muted); margin-top: 0.5rem;">
+                        <span id="severity-label-low">😊 Mild</span>
+                        <span id="severity-label-mid">🙂 Moderate</span>
+                        <span id="severity-label-high">🚨 Critical</span>
                     </div>
                 </div>
-                <span class="ppg-hint">For best results, cover your webcam lens completely with your index finger, or ensure your face is well-lit in front of the camera.</span>
+            </div>
+            
+            <div class="step-navigation-footer">
+                <button type="button" class="btn btn-secondary" onclick="goToStep(3)">Back</button>
+                <button type="button" class="btn btn-primary" onclick="goToStep(5)">Next Step</button>
             </div>
         </div>
-        
-        <!-- Severity Slider -->
-        <div class="form-group">
-            <label for="severity">3. Symptom Severity (1 to 10)</label>
-            <div class="slider-container">
-                <div class="slider-wrapper">
-                    <input type="range" id="severity" name="severity" min="1" max="10" value="5" step="1" oninput="updateSeverityVal(this.value)">
-                    <span class="slider-value" id="severityVal">5</span>
+
+        <!-- ==================== STEP 5: ASSOCIATED SYMPTOMS ==================== -->
+        <div class="form-step" id="step-5-panel">
+            <div class="step-header">
+                <span class="form-label" style="color: var(--color-primary);">Step 5 of 6</span>
+                <h3 class="step-title">Associated Symptoms</h3>
+                <p class="step-desc">Select any additional warning signs or symptoms you are experiencing.</p>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-grid">
+                    <label class="checkbox-card" id="card-Fever">
+                        <input type="checkbox" name="associated_symptoms" value="Fever" onchange="toggleCardActive(this)">
+                        <span class="checkbox-icon">🌡️</span>
+                        <span class="checkbox-text">Fever</span>
+                    </label>
+                    <label class="checkbox-card" id="card-Shortness-of-Breath">
+                        <input type="checkbox" name="associated_symptoms" value="Shortness of Breath" onchange="toggleCardActive(this)">
+                        <span class="checkbox-icon">🫁</span>
+                        <span class="checkbox-text">Shortness of Breath</span>
+                    </label>
+                    <label class="checkbox-card" id="card-Chest-Tightness">
+                        <input type="checkbox" name="associated_symptoms" value="Chest Tightness" onchange="toggleCardActive(this)">
+                        <span class="checkbox-icon">❤️</span>
+                        <span class="checkbox-text">Chest Tightness</span>
+                    </label>
+                    <label class="checkbox-card" id="card-Dizziness">
+                        <input type="checkbox" name="associated_symptoms" value="Dizziness / Fainting" onchange="toggleCardActive(this)">
+                        <span class="checkbox-icon">💫</span>
+                        <span class="checkbox-text">Dizziness</span>
+                    </label>
+                    <label class="checkbox-card" id="card-Nausea">
+                        <input type="checkbox" name="associated_symptoms" value="Nausea / Vomiting" onchange="toggleCardActive(this)">
+                        <span class="checkbox-icon">🤢</span>
+                        <span class="checkbox-text">Nausea</span>
+                    </label>
+                    <label class="checkbox-card" id="card-Severe-Pain">
+                        <input type="checkbox" name="associated_symptoms" value="Severe Pain" onchange="toggleCardActive(this)">
+                        <span class="checkbox-icon">⚡</span>
+                        <span class="checkbox-text">Severe Pain</span>
+                    </label>
+                    <label class="checkbox-card" id="card-Weakness">
+                        <input type="checkbox" name="associated_symptoms" value="Numbness / Weakness" onchange="toggleCardActive(this)">
+                        <span class="checkbox-icon">🧠</span>
+                        <span class="checkbox-text">Weakness</span>
+                    </label>
+                    <label class="checkbox-card" id="card-Vision-Changes">
+                        <input type="checkbox" name="associated_symptoms" value="Vision Changes" onchange="toggleCardActive(this)">
+                        <span class="checkbox-icon">👁️</span>
+                        <span class="checkbox-text">Vision Changes</span>
+                    </label>
                 </div>
-                <div class="slider-labels">
-                    <span>1 (Very Mild)</span>
-                    <span>5 (Moderate)</span>
-                    <span>10 (Severe / Intolerable)</span>
+            </div>
+            
+            <div class="step-navigation-footer">
+                <button type="button" class="btn btn-secondary" onclick="goToStep(4)">Back</button>
+                <button type="button" class="btn btn-primary" onclick="goToStep(6)">Next Step</button>
+            </div>
+        </div>
+
+        <!-- ==================== STEP 6: GENERATE CLINICAL ASSESSMENT ==================== -->
+        <div class="form-step" id="step-6-panel">
+            <div class="step-header">
+                <span class="form-label" style="color: var(--color-primary);">Step 6 of 6</span>
+                <h3 class="step-title">Review &amp; Generate Assessment</h3>
+                <p class="step-desc">Verify your symptoms profile before generating the clinical Specialist routing recommendation.</p>
+            </div>
+            
+            <div class="form-group">
+                <div class="review-summary-container">
+                    <div class="review-item">
+                        <span class="review-label">Symptoms:</span>
+                        <span class="review-value" id="review-symptoms">--</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">Duration:</span>
+                        <span class="review-value" id="review-duration">--</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">Vitals Captured:</span>
+                        <span class="review-value" id="review-pulse">Not scanned</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">Severity Level:</span>
+                        <span class="review-value" id="review-severity">5</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">Associated Signs:</span>
+                        <span class="review-value" id="review-associated">None</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Associated Symptoms Checkboxes -->
-        <div class="form-group">
-            <label>4. Associated Symptoms (Select all that apply)</label>
-            <div class="checkbox-grid">
-                <label class="checkbox-label">
-                    <input type="checkbox" name="associated_symptoms" value="Fever"> Fever
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" name="associated_symptoms" value="Shortness of Breath"> Shortness of Breath
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" name="associated_symptoms" value="Chest Tightness"> Chest Tightness
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" name="associated_symptoms" value="Dizziness / Fainting"> Dizziness / Fainting
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" name="associated_symptoms" value="Nausea / Vomiting"> Nausea / Vomiting
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" name="associated_symptoms" value="Severe Pain"> Severe Pain
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" name="associated_symptoms" value="Numbness / Weakness"> Numbness / Weakness
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" name="associated_symptoms" value="Vision Changes"> Vision Changes
-                </label>
+            
+            <div class="step-navigation-footer">
+                <button type="button" class="btn btn-secondary" onclick="goToStep(5)">Back</button>
+                <button type="submit" class="btn btn-pulse-primary" id="submit-btn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle; margin-right: 4px;">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                    Generate AI Clinical Assessment
+                </button>
             </div>
         </div>
         
-        <!-- Submit Button -->
-        <button type="submit" class="btn btn-primary" id="submit-btn" style="margin-top: 1.5rem;">Get Triage Assessment</button>
     </form>
 </div>
 
 <script>
-    function updateSeverityVal(val) {
-        document.getElementById('severityVal').textContent = val;
+    // --- Step Navigation State Management ---
+    let currentStep = 1;
+    const totalSteps = 6;
+
+    function goToStep(step) {
+        if (step < 1 || step > totalSteps) return;
+        
+        // Validation on Next button
+        if (step > currentStep) {
+            if (currentStep === 1) {
+                const symptomsText = document.getElementById('symptoms_text').value.trim();
+                if (!symptomsText) {
+                    showToast("Please describe your symptoms before proceeding.");
+                    return;
+                }
+            }
+            if (currentStep === 2) {
+                const duration = document.getElementById('duration').value.trim();
+                if (!duration) {
+                    showToast("Please enter duration details.");
+                    return;
+                }
+            }
+        }
+
+        // Deactivate old step panel & activate new one
+        document.getElementById(`step-${currentStep}-panel`).classList.remove('active');
+        document.getElementById(`step-${step}-panel`).classList.add('active');
+        
+        currentStep = step;
+        updateStepProgressIndicators();
+
+        // Populate step 6 review summaries
+        if (step === 6) {
+            document.getElementById('review-symptoms').textContent = truncateText(document.getElementById('symptoms_text').value, 40);
+            document.getElementById('review-duration').textContent = document.getElementById('duration').value;
+            
+            const hr = document.getElementById('heart_rate').value;
+            document.getElementById('review-pulse').textContent = hr ? `${hr} BPM` : 'Not scanned';
+            document.getElementById('review-severity').textContent = document.getElementById('severity').value;
+            
+            const checkedSymptomBoxes = document.querySelectorAll('input[name="associated_symptoms"]:checked');
+            const symptomsList = Array.from(checkedSymptomBoxes).map(cb => cb.value);
+            document.getElementById('review-associated').textContent = symptomsList.length > 0 ? symptomsList.join(', ') : 'None';
+        }
     }
 
-    // --- Web Speech API: Voice Input for Symptoms ---
+    function truncateText(text, limit) {
+        if (text.length <= limit) return text;
+        return text.substring(0, limit) + "...";
+    }
+
+    function updateStepProgressIndicators() {
+        // Line progress width fill
+        const fillPercent = ((currentStep - 1) / (totalSteps - 1)) * 100;
+        document.getElementById('step-progress-line-fill').style.width = `${fillPercent}%`;
+
+        // Update step dots classes
+        const dots = document.querySelectorAll('.step-dot');
+        dots.forEach(dot => {
+            const stepNum = parseInt(dot.getAttribute('data-step'));
+            dot.className = "step-dot";
+            if (stepNum === currentStep) {
+                dot.classList.add('active');
+            } else if (stepNum < currentStep) {
+                dot.classList.add('completed');
+            }
+        });
+    }
+
+    // Step dots click handler
+    document.querySelectorAll('.step-dot').forEach(dot => {
+        dot.addEventListener('click', function() {
+            const stepNum = parseInt(this.getAttribute('data-step'));
+            goToStep(stepNum);
+        });
+    });
+
+    // --- Custom Symptoms presets & utilities ---
+    function applySymptomPreset(text) {
+        const textarea = document.getElementById('symptoms_text');
+        textarea.value = text;
+        triggerCharCounter();
+        showToast(`Applied preset: ${text}`);
+    }
+
+    const clearBtn = document.getElementById('clear-symptoms-btn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            document.getElementById('symptoms_text').value = '';
+            triggerCharCounter();
+        });
+    }
+
+    function triggerCharCounter() {
+        const text = document.getElementById('symptoms_text').value;
+        document.getElementById('char-counter').textContent = `${text.length} / 1000 characters`;
+    }
+    document.getElementById('symptoms_text').addEventListener('input', triggerCharCounter);
+
+    // --- Custom Severity Value display labels & color codes ---
+    function updateSeverityVal(val) {
+        document.getElementById('severityVal').textContent = val;
+        
+        // Colors & labels gradient thresholds
+        const valNum = parseInt(val);
+        const lowLabel = document.getElementById('severity-label-low');
+        const midLabel = document.getElementById('severity-label-mid');
+        const highLabel = document.getElementById('severity-label-high');
+        const valText = document.getElementById('severityVal');
+
+        // Reset label weights
+        lowLabel.style.fontWeight = '500';
+        midLabel.style.fontWeight = '500';
+        highLabel.style.fontWeight = '500';
+
+        if (valNum <= 3) {
+            lowLabel.style.fontWeight = '800';
+            valText.style.color = 'var(--color-primary)';
+        } else if (valNum <= 7) {
+            midLabel.style.fontWeight = '800';
+            valText.style.color = 'var(--color-warning)';
+        } else {
+            highLabel.style.fontWeight = '800';
+            valText.style.color = 'var(--color-danger)';
+        }
+    }
+
+    // Toggle active classes on associated checklist cards
+    function toggleCardActive(checkbox) {
+        const card = checkbox.closest('.checkbox-card');
+        if (checkbox.checked) {
+            card.classList.add('active');
+        } else {
+            card.classList.remove('active');
+        }
+    }
+
+    // --- Web Speech API: Voice Input dictation ---
     (function () {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const micBtn = document.getElementById('mic-btn');
-        const micHint = document.getElementById('mic-hint');
+        const overlay = document.getElementById('mic-waveform-overlay');
         const textarea = document.getElementById('symptoms_text');
 
-        // Feature-detect: hide mic entirely if unsupported
         if (!SpeechRecognition) {
             if (micBtn) micBtn.style.display = 'none';
-            if (micHint) micHint.style.display = 'none';
             return;
         }
 
@@ -143,7 +469,6 @@
             if (isListening) {
                 recognition.stop();
             } else {
-                // Capture any existing text so we append to it
                 finalTranscript = textarea.value;
                 recognition.start();
             }
@@ -152,13 +477,13 @@
         recognition.addEventListener('start', function () {
             isListening = true;
             micBtn.classList.add('mic-active');
-            micBtn.setAttribute('title', 'Listening… tap to stop');
+            overlay.classList.add('active');
         });
 
         recognition.addEventListener('end', function () {
             isListening = false;
             micBtn.classList.remove('mic-active');
-            micBtn.setAttribute('title', 'Tap to speak your symptoms');
+            overlay.classList.remove('active');
         });
 
         recognition.addEventListener('result', function (event) {
@@ -172,16 +497,18 @@
                 }
             }
             textarea.value = finalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
+            triggerCharCounter();
         });
 
         recognition.addEventListener('error', function (event) {
             console.warn('Speech recognition error:', event.error);
             isListening = false;
             micBtn.classList.remove('mic-active');
+            overlay.classList.remove('active');
         });
     })();
 
-    // --- Web PPG Heart Rate Scanner ---
+    // --- Web Webcam PPG Heart Rate Sensor logic ---
     (function () {
         const startBtn = document.getElementById('ppg-start-btn');
         const video = document.getElementById('ppg-video');
@@ -189,28 +516,44 @@
         const statusText = document.getElementById('ppg-status');
         const hrInput = document.getElementById('heart_rate');
         const overlay = document.getElementById('ppg-finger-overlay');
+        const overlayText = document.getElementById('ppg-overlay-text');
+        const hub = document.getElementById('ppg-sensor-hub');
+        const progressRing = document.getElementById('ppg-progress-ring-fill');
+        const qualityDot = document.getElementById('ppg-quality-dot');
+        const qualityText = document.getElementById('ppg-quality-text');
+        const guidanceTip = document.getElementById('ppg-guidance-tip');
         const ctx = canvas.getContext('2d');
 
         let stream = null;
         let animationFrameId = null;
         let isScanning = false;
         
-        // Signal processing variables
         let signalHistory = [];
-        const historyLength = 120; // 4 seconds at 30fps
+        const historyLength = 150; 
         let timestamps = [];
-        let scanStartTime = 0;
-        const scanDuration = 10000; // 10 seconds
+        
+        let stableFrames = 0;
+        let totalElapsedMs = 0;
+        let progressPercent = 0;
+        const requiredStableDurationMs = 12000;
 
-        // Offscreen canvas for frame analysis
         const offscreenCanvas = document.createElement('canvas');
         const offscreenCtx = offscreenCanvas.getContext('2d');
         offscreenCanvas.width = 30;
         offscreenCanvas.height = 30;
 
+        const STATES = {
+            WAITING: 'waiting',      
+            MEASURING: 'measuring',  
+            SIGNAL_LOST: 'lost',     
+            COMPLETE: 'complete'     
+        };
+        let sensorState = STATES.WAITING;
+        const strokeCircumference = 283; 
+
         startBtn.addEventListener('click', async function () {
             if (isScanning) {
-                stopScan();
+                stopScan(false);
                 return;
             }
             startScan();
@@ -218,11 +561,15 @@
 
         async function startScan() {
             try {
-                statusText.textContent = "Initializing camera...";
+                updateUIState(STATES.WAITING, "Initializing camera...");
                 hrInput.value = "";
                 overlay.style.display = 'none';
                 signalHistory = [];
                 timestamps = [];
+                stableFrames = 0;
+                totalElapsedMs = 0;
+                progressPercent = 0;
+                updateProgress(0);
 
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
@@ -240,18 +587,21 @@
                     startBtn.textContent = "Cancel Scan";
                     startBtn.classList.add('btn-primary');
                     startBtn.classList.remove('btn-secondary');
-                    statusText.textContent = "Place finger over lens...";
-                    scanStartTime = Date.now();
+                    
+                    updateUIState(STATES.WAITING, "Place finger over lens...");
+                    lastFrameTime = Date.now();
                     processFrame();
                 };
             } catch (err) {
-                console.error("Camera access denied or failed:", err);
-                statusText.textContent = "Camera error / denied";
+                console.error("Camera access failed:", err);
+                updateUIState(STATES.WAITING, "Camera access denied", "none");
                 overlay.style.display = 'flex';
-                overlay.querySelector('span').textContent = "Camera access required";
-                // Let user type manually by removing read-only attribute if scan fails/denied
+                overlayText.textContent = "Camera error";
+                
+                // Manual override
                 hrInput.removeAttribute('readonly');
-                hrInput.placeholder = "72";
+                hrInput.placeholder = "e.g. 72";
+                hrInput.focus();
             }
         }
 
@@ -260,6 +610,7 @@
             startBtn.textContent = "Start Pulse Scan";
             startBtn.classList.remove('btn-primary');
             startBtn.classList.add('btn-secondary');
+            hub.classList.remove('measuring');
 
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
@@ -271,72 +622,151 @@
             }
 
             if (!successful) {
-                statusText.textContent = "Scan Canceled";
+                updateUIState(STATES.WAITING, "Scan Canceled", "none");
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 overlay.style.display = 'flex';
-                overlay.querySelector('span').textContent = "Place finger over camera lens";
+                overlayText.textContent = "Sensor Ready";
+                updateProgress(0);
+                hrInput.value = "";
             }
         }
+
+        let lastFrameTime = Date.now();
 
         function processFrame() {
             if (!isScanning) return;
 
-            const elapsed = Date.now() - scanStartTime;
-            const remaining = Math.max(0, Math.ceil((scanDuration - elapsed) / 1000));
-            
-            if (elapsed >= scanDuration) {
-                calculateBPM();
-                return;
-            }
+            const now = Date.now();
+            const frameDelta = now - lastFrameTime;
+            lastFrameTime = now;
 
-            // Draw to offscreen canvas to resize and analyze pixels
             offscreenCtx.drawImage(video, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
             const imgData = offscreenCtx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
             const data = imgData.data;
 
-            // Calculate average channels
-            let rSum = 0, gSum = 0;
+            let rSum = 0, gSum = 0, bSum = 0;
             const pixelCount = data.length / 4;
             for (let i = 0; i < data.length; i += 4) {
-                rSum += data[i];     // Red channel
-                gSum += data[i+1];   // Green channel
+                rSum += data[i];     
+                gSum += data[i+1];   
+                bSum += data[i+2];   
             }
             const avgR = rSum / pixelCount;
             const avgG = gSum / pixelCount;
+            const avgB = bSum / pixelCount;
 
-            // Capillary blood absorption peaks in green channel.
-            // Check if finger is actually covering the lens (frame should be predominantly red/pink)
-            const isFingerCovering = avgR > 110 && avgG < 85; 
+            const isFingerCovering = avgR > 105 && (avgR / (avgG + 1) > 1.35) && (avgR / (avgB + 1) > 1.6);
 
-            if (!isFingerCovering && elapsed > 2000) {
-                statusText.textContent = `Cover lens completely (${remaining}s)`;
-            } else {
-                statusText.textContent = `Scanning... ${remaining}s`;
+            if (!isFingerCovering) {
+                stableFrames = 0;
+                updateUIState(STATES.WAITING, "Cover camera lens completely", "none");
+                guidanceTip.textContent = "Instruction: Cover your webcam completely using your fingertip. Move closer and hold still.";
+                
+                signalHistory.push(avgG);
+                timestamps.push(now);
+                if (signalHistory.length > historyLength) {
+                    signalHistory.shift();
+                    timestamps.shift();
+                }
+                drawWaveform();
+                
+                animationFrameId = requestAnimationFrame(processFrame);
+                return;
             }
 
-            // Record green channel value (the inverse relates to blood volume pulse)
             signalHistory.push(avgG);
-            timestamps.push(Date.now());
+            timestamps.push(now);
             if (signalHistory.length > historyLength) {
                 signalHistory.shift();
                 timestamps.shift();
+            }
+
+            const checkWindowSize = 30;
+            let signalQuality = "good";
+
+            if (signalHistory.length >= checkWindowSize) {
+                const recentSlice = signalHistory.slice(-checkWindowSize);
+                const minVal = Math.min(...recentSlice);
+                const maxVal = Math.max(...recentSlice);
+                const diff = maxVal - minVal;
+
+                if (diff > 35.0) {
+                    signalQuality = "poor";
+                    stableFrames = 0;
+                    updateUIState(STATES.SIGNAL_LOST, "Keep still... Adjust position", "poor");
+                    guidanceTip.textContent = "Instruction: Move finger closer, improve lighting, and hold still.";
+                } else if (diff < 0.2) {
+                    signalQuality = "poor";
+                    stableFrames = 0;
+                    updateUIState(STATES.WAITING, "Waiting for stable pulse signal...", "poor");
+                } else {
+                    signalQuality = "good";
+                    stableFrames += frameDelta;
+                    
+                    totalElapsedMs += frameDelta;
+                    progressPercent = Math.min(100, (totalElapsedMs / requiredStableDurationMs) * 100);
+                    
+                    updateProgress(progressPercent);
+                    updateUIState(STATES.MEASURING, `Reading Pulse... ${Math.ceil((requiredStableDurationMs - totalElapsedMs)/1000)}s`, "good");
+                    guidanceTip.textContent = "Instruction: Pulse detected! Rest finger lightly and wait for scan completion.";
+                }
+            } else {
+                updateUIState(STATES.WAITING, "Stabilizing Signal...", "poor");
+            }
+
+            if (totalElapsedMs >= requiredStableDurationMs) {
+                calculateBPM();
+                return;
             }
 
             drawWaveform();
             animationFrameId = requestAnimationFrame(processFrame);
         }
 
+        function updateUIState(state, text, quality = "none") {
+            sensorState = state;
+            statusText.textContent = text;
+            
+            statusText.className = "ppg-status";
+            hub.className = "ppg-sensor-hub";
+
+            if (state === STATES.MEASURING) {
+                statusText.classList.add('measuring');
+                hub.classList.add('measuring');
+            } else if (state === STATES.SIGNAL_LOST) {
+                statusText.classList.add('error');
+            } else if (state === STATES.COMPLETE) {
+                statusText.classList.add('complete');
+            }
+
+            qualityDot.className = "quality-dot";
+            if (quality === "good") {
+                qualityDot.classList.add('good');
+                qualityText.textContent = "Signal: Good";
+            } else if (quality === "poor") {
+                qualityDot.classList.add('poor');
+                qualityText.textContent = "Signal: Unstable";
+            } else {
+                qualityDot.classList.add('none');
+                qualityText.textContent = "Signal: None";
+            }
+        }
+
+        function updateProgress(percent) {
+            const offset = strokeCircumference - (strokeCircumference * percent) / 100;
+            progressRing.style.strokeDashoffset = offset;
+        }
+
         function drawWaveform() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (signalHistory.length < 2) return;
 
-            // Low-pass/smooth values for display
             const smoothed = [];
-            const windowSize = 5;
+            const filterSize = 4;
             for (let i = 0; i < signalHistory.length; i++) {
                 let sum = 0;
                 let count = 0;
-                for (let w = -windowSize; w <= windowSize; w++) {
+                for (let w = -filterSize; w <= filterSize; w++) {
                     if (i + w >= 0 && i + w < signalHistory.length) {
                         sum += signalHistory[i + w];
                         count++;
@@ -345,21 +775,37 @@
                 smoothed.push(sum / count);
             }
 
-            // Find min/max for scaling
             let min = Math.min(...smoothed);
             let max = Math.max(...smoothed);
             const range = max - min || 1;
 
+            // Draw clean background clinical grids
+            ctx.strokeStyle = document.body.classList.contains('dark-mode') ? '#1E293B' : '#F1F5F9';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 20) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw glowing PPG waveform line
             ctx.beginPath();
-            ctx.strokeStyle = '#3D6B63';
+            ctx.strokeStyle = '#14B8A6';
             ctx.lineWidth = 2.5;
             ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
 
             const step = canvas.width / (historyLength - 1);
             for (let i = 0; i < smoothed.length; i++) {
                 const x = i * step;
-                // Invert so peaks represent high blood volume (dips in light intensity)
-                const y = canvas.height - 10 - ((smoothed[i] - min) / range) * (canvas.height - 20);
+                const y = canvas.height - 8 - ((smoothed[i] - min) / range) * (canvas.height - 16);
                 if (i === 0) {
                     ctx.moveTo(x, y);
                 } else {
@@ -372,20 +818,12 @@
         function calculateBPM() {
             stopScan(true);
 
-            if (signalHistory.length < 30) {
-                statusText.textContent = "Insufficient Data";
-                overlay.style.display = 'flex';
-                hrInput.removeAttribute('readonly');
-                return;
-            }
-
-            // Smooth the signal history
             const smoothed = [];
-            const windowSize = 4;
+            const filterSize = 3;
             for (let i = 0; i < signalHistory.length; i++) {
                 let sum = 0;
                 let count = 0;
-                for (let w = -windowSize; w <= windowSize; w++) {
+                for (let w = -filterSize; w <= filterSize; w++) {
                     if (i + w >= 0 && i + w < signalHistory.length) {
                         sum += signalHistory[i + w];
                         count++;
@@ -394,39 +832,58 @@
                 smoothed.push(sum / count);
             }
 
-            // Simple Peak Detection
-            let peaks = 0;
-            const threshold = 0.15; // Noise margin
-            let minVal = Math.min(...smoothed);
-            let maxVal = Math.max(...smoothed);
-            const range = maxVal - minVal;
-            const absoluteThreshold = minVal + range * 0.45; // peak threshold at 45% of amplitude
+            const minVal = Math.min(...smoothed);
+            const maxVal = Math.max(...smoothed);
+            const amplitude = maxVal - minVal;
+            const peakThreshold = minVal + amplitude * 0.45; 
+            let peakTimes = [];
 
             for (let i = 2; i < smoothed.length - 2; i++) {
-                // Peak is local maximum and above threshold
-                if (smoothed[i] < absoluteThreshold && 
+                if (smoothed[i] < peakThreshold && 
                     smoothed[i] < smoothed[i - 1] && 
-                    smoothed[i] < smoothed[i - 2] &&
+                    smoothed[i] < smoothed[i - 2] && 
                     smoothed[i] <= smoothed[i + 1] && 
                     smoothed[i] <= smoothed[i + 2]) {
-                    peaks++;
-                    i += 10; // Refractory period to avoid double counting same beat (approx 300ms at 30fps)
+                    
+                    peakTimes.push(timestamps[i]);
+                    i += 8; 
                 }
             }
 
-            const totalDurationSec = (timestamps[timestamps.length - 1] - timestamps[0]) / 1000;
-            let bpm = Math.round((peaks / totalDurationSec) * 60);
+            let bpm = NaN;
 
-            // Sanity check for human pulse ranges (45 to 160)
-            if (isNaN(bpm) || bpm < 45 || bpm > 165) {
-                // Fallback to a standard simulated normal heart rate between 70-82 bpm to ensure smooth demo/judge flow
-                bpm = Math.floor(Math.random() * 12) + 70;
+            if (peakTimes.length >= 4) {
+                let intervals = [];
+                for (let j = 1; j < peakTimes.length; j++) {
+                    intervals.push(peakTimes[j] - peakTimes[j - 1]);
+                }
+                
+                const sumIntervals = intervals.reduce((a, b) => a + b, 0);
+                const avgInterval = sumIntervals / intervals.length;
+                
+                const variance = intervals.reduce((acc, val) => acc + Math.pow(val - avgInterval, 2), 0) / intervals.length;
+                const stdDev = Math.sqrt(variance);
+
+                if (stdDev / avgInterval < 0.20) {
+                    bpm = Math.round(60000 / avgInterval);
+                }
             }
 
-            hrInput.value = bpm;
-            statusText.textContent = "Scan Completed";
-            overlay.style.display = 'flex';
-            overlay.querySelector('span').textContent = `Sensor Active (Pulse: ${bpm} BPM)`;
+            if (!isNaN(bpm) && bpm >= 50 && bpm <= 160) {
+                hrInput.value = bpm;
+                updateUIState(STATES.COMPLETE, "Pulse Detected", "good");
+                overlay.style.display = 'flex';
+                overlayText.textContent = `${bpm} BPM`;
+                guidanceTip.textContent = `Measurement Complete: Captured ${bpm} BPM.`;
+                updateProgress(100);
+            } else {
+                hrInput.value = "";
+                updateUIState(STATES.WAITING, "Scan Failed", "none");
+                overlay.style.display = 'flex';
+                overlayText.textContent = "Scan Failed";
+                guidanceTip.textContent = "Signal too weak. Cover your webcam completely using your fingertip. Move finger closer. Improve lighting. Hold still.";
+                updateProgress(0);
+            }
         }
     })();
 </script>

@@ -6,7 +6,7 @@ import mysql.connector
 from mysql.connector import pooling
 from flask import Flask, render_template, request, redirect, url_for, flash, make_response
 from dotenv import load_dotenv
-import google.generativeai as genai
+from groq import Groq
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor
@@ -259,17 +259,16 @@ def get_fallback_mock_response(symptoms_text, severity, associated_symptoms):
     }
 
 def analyze_symptoms_ai(symptoms_text, duration, severity, associated_symptoms, heart_rate=None):
-    """Call the Gemini API to analyze patient symptoms and return a structured JSON response."""
-    api_key = os.getenv("GEMINI_API_KEY")
+    """Call the Groq API to analyze patient symptoms and return a structured JSON response."""
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        print("Warning: GEMINI_API_KEY is not configured. Falling back to local heuristics.")
+        print("Warning: GROQ_API_KEY is not configured. Falling back to local heuristics.")
         res = get_fallback_mock_response(symptoms_text, severity, associated_symptoms)
         res["heart_rate"] = heart_rate
         return res
     
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        client = Groq(api_key=api_key)
         
         hr_str = f"{heart_rate} BPM" if heart_rate else "Not measured"
         prompt = f"""You are a medical triage assistant. Based on the patient's reported symptoms and vitals, recommend which hospital department/specialist they should consult and how urgent their situation is. You are NOT diagnosing a condition — you are routing them to the right care.
@@ -283,7 +282,7 @@ Patient input:
 
 Respond ONLY in this JSON format, no markdown, no preamble:
 {{
-  "department": "string, e.g. Cardiology, Dermatology, General Physician",
+  "department": "string, must be EXACTLY one of: 'Emergency Medicine / Cardiology', 'General Physician / Family Medicine', 'General Medicine / Internal Medicine', 'Pulmonology', 'Neurology'",
   "confidence": integer 0-100, how confident you are this is the right department given the input,
   "differential_department": "string, a second department worth considering if symptoms are ambiguous, or null if not applicable",
   "differential_confidence": integer 0-100, confidence in the differential department, or null,
@@ -306,12 +305,19 @@ Rules:
 - Keep explanation reassuring but honest, not alarming
 - reasoning_steps and sbar_text should read like genuine clinical triage logic, not generic filler"""
 
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            model="llama-3.3-70b-versatile",
+            response_format={"type": "json_object"}
         )
         
-        data = json.loads(response.text.strip())
+        response_text = chat_completion.choices[0].message.content
+        data = json.loads(response_text.strip())
         
         # Validations and fallbacks for response format
         if "department" not in data or "urgency_level" not in data or "explanation" not in data:
@@ -357,7 +363,7 @@ Rules:
 
         return data
     except Exception as e:
-        print(f"Error invoking Gemini API: {e}. Falling back to mock heuristics.")
+        print(f"Error invoking Groq API: {e}. Falling back to mock heuristics.")
         res = get_fallback_mock_response(symptoms_text, severity, associated_symptoms)
         res["heart_rate"] = heart_rate
         return res
