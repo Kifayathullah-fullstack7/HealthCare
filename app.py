@@ -500,7 +500,7 @@ def analyze():
         conn.close()
     except Exception as e:
         print(f"Database insertion failed: {e}")
-        flash("An error occurred saving your assessment. Please try again.", "error")
+        flash(f"Assessment generation/storage failed: {e}", "error")
         return redirect(url_for('intake'))
         
     return redirect(url_for('result', report_uuid=report_uuid))
@@ -508,6 +508,7 @@ def analyze():
 @app.route('/result/<report_uuid>')
 def result(report_uuid):
     """Retrieve and display a triage report by its unique UUID."""
+    db_error = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -522,9 +523,13 @@ def result(report_uuid):
     except Exception as e:
         print(f"Database query failed: {e}")
         report = None
+        db_error = e
         
     if not report:
-        flash("The requested triage report could not be found.", "error")
+        if db_error:
+            flash(f"Database Query Error: {db_error}", "error")
+        else:
+            flash("The requested triage report could not be found.", "error")
         return redirect(url_for('intake'))
         
     # Parse the combined JSON explanation and discuss list
