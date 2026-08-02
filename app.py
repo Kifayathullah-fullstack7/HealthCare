@@ -2,8 +2,8 @@ import os
 import uuid
 import json
 import io
-import mysql.connector
-from mysql.connector import pooling
+import psycopg
+from psycopg.rows import dict_row
 from flask import Flask, render_template, request, redirect, url_for, flash, make_response
 from dotenv import load_dotenv
 from groq import Groq
@@ -31,8 +31,8 @@ def initialize_database_before_requests():
         init_db()
         db_initialized = True
 
-# Connection Pool Variable
-db_pool = None
+
+
 
 HOSPITAL_FACILITIES = {
     "Emergency Medicine / Cardiology": [
@@ -62,17 +62,17 @@ HOSPITAL_FACILITIES = {
 }
 
 def get_db_config():
-    """Retrieve database connection parameters from environment variables with automatic fallbacks for Railway, Clever Cloud, etc."""
-    host = os.getenv("DB_HOST") or os.getenv("MYSQLHOST") or os.getenv("MYSQL_HOST") or "localhost"
-    user = os.getenv("DB_USER") or os.getenv("MYSQLUSER") or os.getenv("MYSQL_USER") or "root"
-    password = os.getenv("DB_PASSWORD") or os.getenv("MYSQLPASSWORD") or os.getenv("MYSQL_PASSWORD") or ""
-    database = os.getenv("DB_NAME") or os.getenv("MYSQLDATABASE") or os.getenv("MYSQL_DATABASE") or "symptom_triage"
+    """Retrieve database connection parameters from environment variables with automatic fallbacks for Supabase."""
+    host = os.getenv("DB_HOST") or os.getenv("PGHOST") or "localhost"
+    user = os.getenv("DB_USER") or os.getenv("PGUSER") or "postgres"
+    password = os.getenv("DB_PASSWORD") or os.getenv("PGPASSWORD") or ""
+    database = os.getenv("DB_NAME") or os.getenv("PGDATABASE") or "postgres"
     
-    port_str = os.getenv("DB_PORT") or os.getenv("MYSQLPORT") or os.getenv("MYSQL_PORT") or "3306"
+    port_str = os.getenv("DB_PORT") or os.getenv("PGPORT") or "5432"
     try:
         port = int(port_str)
     except ValueError:
-        port = 3306
+        port = 5432
         
     return {
         "host": host,
@@ -83,80 +83,30 @@ def get_db_config():
     }
 
 def get_db_connection():
-    """Get a database connection from the pool, or create a new connection if pooling is not initialized."""
-    global db_pool
+    """Get a database connection to Supabase PostgreSQL."""
     config = get_db_config()
-    if db_pool is None:
-        try:
-            db_pool = pooling.MySQLConnectionPool(
-                pool_name="triage_pool",
-                pool_size=5,
-                host=config["host"],
-                user=config["user"],
-                password=config["password"],
-                database=config["database"],
-                port=config["port"]
-            )
-        except Exception as e:
-            print(f"Error creating connection pool: {e}")
-            return mysql.connector.connect(
-                host=config["host"],
-                user=config["user"],
-                password=config["password"],
-                database=config["database"],
-                port=config["port"]
-            )
-    
+    conninfo = f"host={config['host']} port={config['port']} dbname={config['database']} user={config['user']} password={config['password']} sslmode=require"
     try:
-        return db_pool.get_connection()
+        conn = psycopg.connect(conninfo, autocommit=False)
+        return conn
     except Exception as e:
-        print(f"Pool get_connection failed: {e}. Falling back to direct connection.")
-        return mysql.connector.connect(
-            host=config["host"],
-            user=config["user"],
-            password=config["password"],
-            database=config["database"],
-            port=config["port"]
-        )
+        print(f"Database connection failed: {e}")
+        raise
 
 def init_db():
     """Initialize database and create reports table if it doesn't exist."""
-    config = get_db_config()
     try:
-        # First connect without database context to create database if permissions allow.
-        # This will fail on shared database plans (like Railway), which is expected and handled safely.
-        conn = mysql.connector.connect(
-            host=config["host"],
-            user=config["user"],
-            password=config["password"],
-            port=config["port"]
-        )
-        cursor = conn.cursor()
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {config['database']}")
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print(f"Notice: Bypassed database creation logic (normal on cloud databases like Railway): {e}")
-
-    try:
-        # Connect directly with the database context (e.g. 'railway' or 'symptom_triage') to create the table
-        conn = mysql.connector.connect(
-            host=config["host"],
-            user=config["user"],
-            password=config["password"],
-            port=config["port"],
-            database=config["database"]
-        )
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS reports (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
                 uuid VARCHAR(36) UNIQUE NOT NULL,
                 symptoms_text TEXT NOT NULL,
                 duration VARCHAR(50) NOT NULL,
                 severity INT NOT NULL,
                 recommended_department VARCHAR(100) NOT NULL,
-                urgency_level ENUM('low', 'medium', 'high') NOT NULL,
+                urgency_level VARCHAR(10) NOT NULL CHECK (urgency_level IN ('low', 'medium', 'high')),
                 ai_explanation TEXT NOT NULL,
                 heart_rate INT DEFAULT NULL,
                 sbar_text TEXT DEFAULT NULL,
@@ -177,12 +127,11 @@ def init_db():
             "assigned_facility": "VARCHAR(150) DEFAULT NULL"
         }
         for col_name, col_def in columns_to_add.items():
-            cursor.execute(f"""
-                SELECT COUNT(*) FROM information_schema.COLUMNS 
-                WHERE TABLE_SCHEMA = '{config['database']}' 
-                AND TABLE_NAME = 'reports' 
-                AND COLUMN_NAME = '{col_name}'
-            """)
+            cursor.execute("""
+                SELECT COUNT(*) FROM information_schema.columns 
+                WHERE table_name = 'reports' 
+                AND column_name = %s
+            """, (col_name,))
             if cursor.fetchone()[0] == 0:
                 print(f"Altering table reports to add column: {col_name}")
                 cursor.execute(f"ALTER TABLE reports ADD COLUMN {col_name} {col_def}")
@@ -513,7 +462,7 @@ def result(report_uuid):
     db_error = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT uuid, symptoms_text, duration, severity, recommended_department, urgency_level, ai_explanation, created_at, heart_rate, sbar_text, red_flags, co_occurring, assigned_facility
             FROM reports
@@ -607,7 +556,7 @@ def result_pdf(report_uuid):
     # --- Fetch report (same logic as /result/<uuid>) ---
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT uuid, symptoms_text, duration, severity, recommended_department, urgency_level, ai_explanation, created_at
             FROM reports
@@ -846,14 +795,14 @@ def dashboard():
 
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(row_factory=dict_row)
 
         # Total reports
         cursor.execute("SELECT COUNT(*) AS cnt FROM reports")
         stats["total_reports"] = cursor.fetchone()["cnt"]
 
         # Reports in last 24 hours
-        cursor.execute("SELECT COUNT(*) AS cnt FROM reports WHERE created_at >= NOW() - INTERVAL 1 DAY")
+        cursor.execute("SELECT COUNT(*) AS cnt FROM reports WHERE created_at >= NOW() - INTERVAL '1 day'")
         stats["today_reports"] = cursor.fetchone()["cnt"]
 
         # Urgency breakdown
