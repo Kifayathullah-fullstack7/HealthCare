@@ -655,12 +655,12 @@
             const avgG = gSum / pixelCount;
             const avgB = bSum / pixelCount;
 
-            const isFingerCovering = avgR > 105 && (avgR / (avgG + 1) > 1.35) && (avgR / (avgB + 1) > 1.6);
+            const isFingerCovering = avgR > 75 && (avgR / (avgG + 1) > 1.2) && (avgR / (avgB + 1) > 1.3);
 
             if (!isFingerCovering) {
                 stableFrames = 0;
-                updateUIState(STATES.WAITING, "Cover camera lens completely", "none");
-                guidanceTip.textContent = "Instruction: Cover your webcam completely using your fingertip. Move closer and hold still.";
+                updateUIState(STATES.WAITING, "Cover webcam completely", "none");
+                guidanceTip.innerHTML = "<strong>Instruction:</strong> Place your index finger directly over the camera lens so it is completely covered. Light levels will drop and the circle should look dark red/pink.";
                 
                 signalHistory.push(avgG);
                 timestamps.push(now);
@@ -690,12 +690,12 @@
                 const maxVal = Math.max(...recentSlice);
                 const diff = maxVal - minVal;
 
-                if (diff > 35.0) {
+                if (diff > 45.0) {
                     signalQuality = "poor";
                     stableFrames = 0;
                     updateUIState(STATES.SIGNAL_LOST, "Keep still... Adjust position", "poor");
-                    guidanceTip.textContent = "Instruction: Move finger closer, improve lighting, and hold still.";
-                } else if (diff < 0.2) {
+                    guidanceTip.innerHTML = "<strong>Warning:</strong> Movement or light shifts detected. Press <em>very lightly</em> against the lens. Do not press hard, as that stops blood flow.";
+                } else if (diff < 0.1) {
                     signalQuality = "poor";
                     stableFrames = 0;
                     updateUIState(STATES.WAITING, "Waiting for stable pulse signal...", "poor");
@@ -708,7 +708,7 @@
                     
                     updateProgress(progressPercent);
                     updateUIState(STATES.MEASURING, `Reading Pulse... ${Math.ceil((requiredStableDurationMs - totalElapsedMs)/1000)}s`, "good");
-                    guidanceTip.textContent = "Instruction: Pulse detected! Rest finger lightly and wait for scan completion.";
+                    guidanceTip.innerHTML = "<strong>Status:</strong> Pulse signal locked. Hold completely still and rest your finger lightly against the lens.";
                 }
             } else {
                 updateUIState(STATES.WAITING, "Stabilizing Signal...", "poor");
@@ -761,8 +761,9 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (signalHistory.length < 2) return;
 
+            // Apply light moving average filter for smoothing the display line
             const smoothed = [];
-            const filterSize = 4;
+            const filterSize = 3;
             for (let i = 0; i < signalHistory.length; i++) {
                 let sum = 0;
                 let count = 0;
@@ -818,6 +819,7 @@
         function calculateBPM() {
             stopScan(true);
 
+            // 1. Smooth the signal using a moving average
             const smoothed = [];
             const filterSize = 3;
             for (let i = 0; i < signalHistory.length; i++) {
@@ -832,27 +834,48 @@
                 smoothed.push(sum / count);
             }
 
-            const minVal = Math.min(...smoothed);
-            const maxVal = Math.max(...smoothed);
+            // 2. Detrend the signal (subtract a moving average of the last 15 samples to remove auto-exposure drift)
+            const detrended = [];
+            const maWindow = 15;
+            for (let i = 0; i < smoothed.length; i++) {
+                let sum = 0;
+                let count = 0;
+                for (let w = -maWindow; w <= 0; w++) {
+                    if (i + w >= 0) {
+                        sum += smoothed[i + w];
+                        count++;
+                    }
+                }
+                const ma = sum / count;
+                detrended.push(smoothed[i] - ma);
+            }
+
+            // 3. Peak Finding on the detrended green absorption signal
+            const minVal = Math.min(...detrended);
+            const maxVal = Math.max(...detrended);
             const amplitude = maxVal - minVal;
-            const peakThreshold = minVal + amplitude * 0.45; 
+            
+            // Focus on negative peaks (dips in green light absorbence correspond to pulse beats)
+            const peakThreshold = minVal + amplitude * 0.40; 
             let peakTimes = [];
 
-            for (let i = 2; i < smoothed.length - 2; i++) {
-                if (smoothed[i] < peakThreshold && 
-                    smoothed[i] < smoothed[i - 1] && 
-                    smoothed[i] < smoothed[i - 2] && 
-                    smoothed[i] <= smoothed[i + 1] && 
-                    smoothed[i] <= smoothed[i + 2]) {
+            for (let i = 2; i < detrended.length - 2; i++) {
+                if (detrended[i] < peakThreshold && 
+                    detrended[i] < detrended[i - 1] && 
+                    detrended[i] < detrended[i - 2] && 
+                    detrended[i] <= detrended[i + 1] && 
+                    detrended[i] <= detrended[i + 2]) {
                     
-                    peakTimes.push(timestamps[i]);
-                    i += 8; 
+                    // Enforce a minimum time-based refractory period of 370ms (~162 BPM max) to filter double triggers
+                    if (peakTimes.length === 0 || (timestamps[i] - peakTimes[peakTimes.length - 1] > 370)) {
+                        peakTimes.push(timestamps[i]);
+                    }
                 }
             }
 
             let bpm = NaN;
 
-            if (peakTimes.length >= 4) {
+            if (peakTimes.length >= 3) {
                 let intervals = [];
                 for (let j = 1; j < peakTimes.length; j++) {
                     intervals.push(peakTimes[j] - peakTimes[j - 1]);
@@ -864,24 +887,27 @@
                 const variance = intervals.reduce((acc, val) => acc + Math.pow(val - avgInterval, 2), 0) / intervals.length;
                 const stdDev = Math.sqrt(variance);
 
-                if (stdDev / avgInterval < 0.20) {
+                // Stability threshold: allow up to 28% variance for tremors and natural heart rate variability
+                if (stdDev / avgInterval < 0.28) {
                     bpm = Math.round(60000 / avgInterval);
+                } else {
+                    console.log("PPG pulse rhythm rejected due to high interval variance:", stdDev / avgInterval);
                 }
             }
 
-            if (!isNaN(bpm) && bpm >= 50 && bpm <= 160) {
+            if (!isNaN(bpm) && bpm >= 50 && bpm <= 150) {
                 hrInput.value = bpm;
                 updateUIState(STATES.COMPLETE, "Pulse Detected", "good");
                 overlay.style.display = 'flex';
                 overlayText.textContent = `${bpm} BPM`;
-                guidanceTip.textContent = `Measurement Complete: Captured ${bpm} BPM.`;
+                guidanceTip.innerHTML = `<strong>Scan Complete:</strong> Successfully captured ${bpm} BPM. You can now proceed to the next step.`;
                 updateProgress(100);
             } else {
                 hrInput.value = "";
                 updateUIState(STATES.WAITING, "Scan Failed", "none");
                 overlay.style.display = 'flex';
                 overlayText.textContent = "Scan Failed";
-                guidanceTip.textContent = "Signal too weak. Cover your webcam completely using your fingertip. Move finger closer. Improve lighting. Hold still.";
+                guidanceTip.innerHTML = "<strong>Scan Failed:</strong> Signal was too noisy or irregular. Please cover the webcam lens fully, press <em>very lightly</em> (do not block blood flow), hold still, and try again.";
                 updateProgress(0);
             }
         }
