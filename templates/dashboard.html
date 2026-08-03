@@ -164,8 +164,8 @@
         const dataDept = JSON.parse(document.getElementById('dept-data-data').textContent);
 
         const gradientDept = ctxDept.createLinearGradient(0, 0, ctxDept.canvas.width || 300, 0);
-        gradientDept.addColorStop(0, '#14B8A6');
-        gradientDept.addColorStop(1, '#06B6D4');
+        gradientDept.addColorStop(0, '#2D6A4F');
+        gradientDept.addColorStop(1, '#52B788');
 
         new Chart(ctxDept, {
             type: 'bar',
@@ -231,7 +231,7 @@
                     labels: ['Routine', 'Moderate', 'Urgent'],
                     datasets: [{
                         data: [lowCount, medCount, highCount],
-                        backgroundColor: ['#14B8A6', '#F59E0B', '#EF4444'],
+                        backgroundColor: ['#52B788', '#DDA15E', '#BC4749'],
                         borderWidth: 0,
                         hoverOffset: 4
                     }]

@@ -330,7 +330,7 @@
             const strokeWidth = Math.max(1, (node.weight / 100) * 4);
             const opacity = 0.2 + (node.weight / 100) * 0.6;
             
-            html += `<line class="link-line" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#14B8A6" stroke-width="${strokeWidth}" stroke-opacity="${opacity}" />`;
+            html += `<line class="link-line" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#2D6A4F" stroke-width="${strokeWidth}" stroke-opacity="${opacity}" />`;
         });
 
         // Draw Center Node (Primary Symptom)
@@ -352,7 +352,7 @@
             html += `
                 <g class="node-group" style="cursor: help;">
                     <title>${node.symptom}: ${node.weight}% correlation</title>
-                    <circle class="node-circle" cx="${x}" cy="${y}" r="${nodeRadius}" fill="#14B8A6" stroke="var(--color-surface-solid)" stroke-width="1.5" />
+                    <circle class="node-circle" cx="${x}" cy="${y}" r="${nodeRadius}" fill="#2D6A4F" stroke="var(--color-surface-solid)" stroke-width="1.5" />
                     <text class="node-text" x="${x}" y="${y + 3}" fill="#FFFFFF" font-family="Inter, sans-serif" font-size="7.5" text-anchor="middle">${node.weight}%</text>
                     <text x="${x}" y="${textY}" fill="var(--color-ink)" font-family="Inter, sans-serif" font-size="8px" font-weight="700" text-anchor="middle">${node.symptom}</text>
                 </g>
