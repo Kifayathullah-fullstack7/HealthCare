@@ -20,3 +20,4 @@ env/
 # Database dumps/logs
 *.log
 *.sql.gz
+*.db

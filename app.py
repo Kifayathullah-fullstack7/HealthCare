@@ -82,16 +82,78 @@ def get_db_config():
         "port": port
     }
 
+import sqlite3
+
+class SQLiteCursorWrapper:
+    def __init__(self, sqlite_cursor):
+        self.cursor = sqlite_cursor
+
+    def execute(self, query, params=None):
+        query = query.replace("%s", "?")
+        query = query.replace("SERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
+        if "information_schema.columns" in query:
+            col_name = params[0]
+            temp_cursor = self.cursor.connection.cursor()
+            try:
+                temp_cursor.execute("PRAGMA table_info(reports)")
+                columns = [row[1] for row in temp_cursor.fetchall()]
+            except Exception:
+                columns = []
+            finally:
+                temp_cursor.close()
+            if col_name in columns:
+                query = "SELECT 1"
+            else:
+                query = "SELECT 0"
+            params = None
+        if params is not None:
+            return self.cursor.execute(query, params)
+        else:
+            return self.cursor.execute(query)
+
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        if row is not None:
+            return dict(row)
+        return None
+
+    def fetchall(self):
+        return [dict(r) for r in self.cursor.fetchall()]
+
+    def close(self):
+        self.cursor.close()
+
+class SQLiteConnectionWrapper:
+    def __init__(self, sqlite_conn):
+        self.conn = sqlite_conn
+        self.conn.row_factory = sqlite3.Row
+
+    def cursor(self, *args, **kwargs):
+        return SQLiteCursorWrapper(self.conn.cursor())
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
 def get_db_connection():
-    """Get a database connection to Supabase PostgreSQL."""
+    """Get a database connection, falling back to local SQLite if PostgreSQL fails."""
     config = get_db_config()
+    use_sqlite = os.getenv("USE_SQLITE", "false").lower() == "true"
+    if use_sqlite:
+        sqlite_path = os.getenv("SQLITE_PATH", "symptom_triage.db")
+        print(f"Forcing SQLite connection using file: {sqlite_path}")
+        return SQLiteConnectionWrapper(sqlite3.connect(sqlite_path))
+        
     conninfo = f"host={config['host']} port={config['port']} dbname={config['database']} user={config['user']} password={config['password']} sslmode=require"
     try:
         conn = psycopg.connect(conninfo, autocommit=False)
         return conn
     except Exception as e:
-        print(f"Database connection failed: {e}")
-        raise
+        print(f"Database connection failed: {e}. Falling back to SQLite.")
+        sqlite_path = os.getenv("SQLITE_PATH", "symptom_triage.db")
+        return SQLiteConnectionWrapper(sqlite3.connect(sqlite_path))
 
 def init_db():
     """Initialize database and create reports table if it doesn't exist."""

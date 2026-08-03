@@ -81,24 +81,29 @@
         {% if total > 0 %}
         <div style="height: 24px; display: flex; border-radius: 9999px; overflow: hidden; background-color: var(--color-border); margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
             {% if stats.urgency_counts.low > 0 %}
-            <div style="width: {{ (stats.urgency_counts.low / total * 100) | round(1) }}%; background-color: var(--color-urgency-low); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; font-weight: 800;"
+            <div class="urgency-heat-segment" data-width="{{ (stats.urgency_counts.low / total * 100) | round(1) }}%" style="background-color: var(--color-urgency-low); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; font-weight: 800;"
                 title="Routine: {{ stats.urgency_counts.low }}">
                 {{ stats.urgency_counts.low }}
             </div>
             {% endif %}
             {% if stats.urgency_counts.medium > 0 %}
-            <div style="width: {{ (stats.urgency_counts.medium / total * 100) | round(1) }}%; background-color: var(--color-urgency-medium); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; font-weight: 800;"
+            <div class="urgency-heat-segment" data-width="{{ (stats.urgency_counts.medium / total * 100) | round(1) }}%" style="background-color: var(--color-urgency-medium); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; font-weight: 800;"
                 title="Moderate: {{ stats.urgency_counts.medium }}">
                 {{ stats.urgency_counts.medium }}
             </div>
             {% endif %}
             {% if stats.urgency_counts.high > 0 %}
-            <div style="width: {{ (stats.urgency_counts.high / total * 100) | round(1) }}%; background-color: var(--color-urgency-high); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; font-weight: 800;"
+            <div class="urgency-heat-segment" data-width="{{ (stats.urgency_counts.high / total * 100) | round(1) }}%" style="background-color: var(--color-urgency-high); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; font-weight: 800;"
                 title="Urgent: {{ stats.urgency_counts.high }}">
                 {{ stats.urgency_counts.high }}
             </div>
             {% endif %}
         </div>
+        <script>
+            document.querySelectorAll('.urgency-heat-segment').forEach(el => {
+                el.style.width = el.getAttribute('data-width');
+            });
+        </script>
         <div style="display: flex; gap: 1.5rem; justify-content: center; font-size: 0.78rem; font-weight: 700; color: var(--color-ink-muted);">
             <span style="display: flex; align-items: center; gap: 0.35rem;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--color-urgency-low);"></span> Routine ({{ stats.urgency_counts.low }})</span>
             <span style="display: flex; align-items: center; gap: 0.35rem;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--color-urgency-medium);"></span> Moderate ({{ stats.urgency_counts.medium }})</span>
@@ -148,12 +153,15 @@
 </div>
 
 {% if stats.top_departments %}
+<script id="dept-labels-data" type="application/json">{{ stats.top_departments | map(attribute='recommended_department') | list | tojson }}</script>
+<script id="dept-data-data" type="application/json">{{ stats.top_departments | map(attribute='cnt') | list | tojson }}</script>
+<script id="urgency-counts-data" type="application/json">{{ stats.urgency_counts | tojson }}</script>
 <script>
     (function () {
         // --- Department Horizontal Bar Chart ---
         const ctxDept = document.getElementById('deptChart').getContext('2d');
-        const labelsDept = {{ stats.top_departments | map(attribute='recommended_department') | list | tojson }};
-        const dataDept = {{ stats.top_departments | map(attribute='cnt') | list | tojson }};
+        const labelsDept = JSON.parse(document.getElementById('dept-labels-data').textContent);
+        const dataDept = JSON.parse(document.getElementById('dept-data-data').textContent);
 
         const gradientDept = ctxDept.createLinearGradient(0, 0, ctxDept.canvas.width || 300, 0);
         gradientDept.addColorStop(0, '#14B8A6');
@@ -212,9 +220,10 @@
         // --- Urgency Donut Chart ---
         const ctxUrgency = document.getElementById('urgencyDonut');
         if (ctxUrgency) {
-            const lowCount = {{ stats.urgency_counts.low | tojson }};
-            const medCount = {{ stats.urgency_counts.medium | tojson }};
-            const highCount = {{ stats.urgency_counts.high | tojson }};
+            const urgencyCounts = JSON.parse(document.getElementById('urgency-counts-data').textContent);
+            const lowCount = urgencyCounts.low;
+            const medCount = urgencyCounts.medium;
+            const highCount = urgencyCounts.high;
 
             new Chart(ctxUrgency.getContext('2d'), {
                 type: 'doughnut',
